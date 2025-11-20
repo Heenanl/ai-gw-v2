@@ -13,8 +13,11 @@ param tags object = {}
 @description('The SKU name for the AI Foundry account')
 param skuName string = 'S0'
 
-@description('Enable public network access')
-param publicNetworkAccess bool = true
+@description('Enforce private access by disabling public network access and denying default ACLs')
+param enforcePrivateAccess bool = true
+
+var networkDefaultAction = enforcePrivateAccess ? 'Deny' : 'Allow'
+var publicNetworkSetting = enforcePrivateAccess ? 'Disabled' : 'Enabled'
 
 @description('Project description')
 param projectDescription string = 'AI Proxy model deployments project'
@@ -39,11 +42,11 @@ resource aiFoundryAccount 'Microsoft.CognitiveServices/accounts@2025-04-01-previ
     customSubDomainName: accountName
     allowProjectManagement: true
     networkAcls: {
-      defaultAction: publicNetworkAccess ? 'Allow' : 'Deny'
+      defaultAction: networkDefaultAction
       ipRules: []
       virtualNetworkRules: []
     }
-    publicNetworkAccess: publicNetworkAccess ? 'Enabled' : 'Disabled'
+    publicNetworkAccess: publicNetworkSetting
     restrictOutboundNetworkAccess: false
     disableLocalAuth: false
   }

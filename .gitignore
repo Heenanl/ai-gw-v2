@@ -1,0 +1,18 @@
+# Ignore specs folder
+specs/
+# Ignore .agent folder
+.agent/
+# Ignore certificate files
+*.crt
+*.cer
+*.pem
+*.p12
+*.pfx
+*.key
+*.json
+# Ignore copilot instructions files
+.copilot-instructions.md
+*copilot-instructions.md
+*.copilot-instructions.md
+copilot-instructions.md
+my-copilot.instructions.md

@@ -1,6 +1,6 @@
 {
     "resourceGroupNames": [
-        "rg-genai-gw-v2"
+        "rg-kpn-apimv2"
     ],
     "tags": {
         "ApplicationName": "GenAIGatewayV2",

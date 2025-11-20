@@ -11,6 +11,12 @@ param tags object = {}
 @allowed(['BasicV2', 'StandardV2'])
 param sku string = 'StandardV2'
 
+@description('Virtual network type for APIM when subnet is provided (External keeps public gateway).')
+param virtualNetworkType string = 'External'
+
+@description('Subnet resource ID for APIM outbound virtual network integration. Leave empty to skip VNet integration.')
+param apimSubnetResourceId string = ''
+
 @description('Publisher email for APIM')
 param publisherEmail string
 
@@ -25,6 +31,8 @@ param appInsightsInstrumentationKey string
 
 @description('Application Insights resource ID')
 param appInsightsId string
+
+var hasVnetIntegration = !empty(apimSubnetResourceId)
 
 // API Management Service
 resource apimService 'Microsoft.ApiManagement/service@2023-09-01-preview' = {
@@ -44,6 +52,10 @@ resource apimService 'Microsoft.ApiManagement/service@2023-09-01-preview' = {
   properties: {
     publisherEmail: publisherEmail
     publisherName: publisherName
+    virtualNetworkConfiguration: hasVnetIntegration ? {
+      subnetResourceId: apimSubnetResourceId
+    } : null
+    virtualNetworkType: hasVnetIntegration ? virtualNetworkType : 'None'
   }
 }
 

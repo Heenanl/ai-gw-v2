@@ -6,7 +6,7 @@ param suffix = 'genaishared'
 
 param rgLocation = 'westeurope'
 
-param apimPublisherEmail = 'noreply@microsoft.com'
+param apimPublisherEmail = 'heenarefai@microsoft.com'
 
 param apimPublisherName = 'AIGatewayTeam'
 
@@ -83,3 +83,23 @@ param openAILocations = [
     ]
   }
 ]
+
+param vnetName = 'vnet-acc-kpn'
+
+param createNewVnet = true
+
+param vnetAddressPrefixes = [
+  '10.50.0.0/20'
+]
+
+param apimSubnetPrefix = '10.50.0.0/27'
+
+param pepSubnetPrefix = '10.50.1.0/24'
+
+param virtualNetworkType = 'External'
+
+param enforcePrivateAccess = true
+
+param allowedCognitivePrivateEndpointIps = []
+
+param aiPrivateEndpointSubnetId = ''

@@ -28,6 +28,33 @@ param openAILocations array
 @description('Tags to apply to all resources')
 param tags object = {}
 
+@description('Virtual network name for private integration (created when createNewVnet=true)')
+param vnetName string = 'vnet-${environment}-${suffix}'
+
+@description('Set to true to create the virtual network; set false to reference an existing VNet')
+param createNewVnet bool = true
+
+@description('Address space CIDR prefixes used when creating a new VNet')
+param vnetAddressPrefixes array = ['10.50.0.0/20']
+
+@description('CIDR for the dedicated APIM subnet (minimum /27)')
+param apimSubnetPrefix string = '10.50.0.0/27'
+
+@description('CIDR for the private endpoint subnet')
+param pepSubnetPrefix string = '10.50.1.0/24'
+
+@description('APIM virtual network type (External keeps public gateway reachable)')
+param virtualNetworkType string = 'External'
+
+@description('Enforce private access to AI Foundry by disabling public network access')
+param enforcePrivateAccess bool = true
+
+@description('Private endpoint IPs allowed for Cognitive Services egress; leave empty during Phase 1 hardening')
+param allowedCognitivePrivateEndpointIps array = []
+
+@description('Existing private endpoint subnet resource ID (optional override when not creating)')
+param aiPrivateEndpointSubnetId string = ''
+
 // Variables
 var namingPrefix = '${environment}-${suffix}'
 var apimName = 'apim-${namingPrefix}-${uniqueId}'
@@ -41,6 +68,25 @@ resource managedIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-
   location: rgLocation
   tags: tags
 }
+
+// Network foundation for APIM integration and private endpoints
+module network 'modules/network.bicep' = {
+  name: 'deploy-network'
+  params: {
+    location: rgLocation
+    vnetName: vnetName
+    vnetAddressPrefixes: vnetAddressPrefixes
+    createNewVnet: createNewVnet
+    apimSubnetPrefix: apimSubnetPrefix
+    pepSubnetPrefix: pepSubnetPrefix
+    allowedCognitivePrivateEndpointIps: allowedCognitivePrivateEndpointIps
+    tags: tags
+  }
+}
+
+var apimSubnetResourceId = network.outputs.apimSubnetId
+var privateDnsZoneId = network.outputs.privateDnsZoneId
+var privateEndpointSubnetId = empty(aiPrivateEndpointSubnetId) ? network.outputs.pepSubnetId : aiPrivateEndpointSubnetId
 
 // 2. Deploy monitoring infrastructure
 module logAnalytics 'modules/log-analytics.bicep' = {
@@ -72,9 +118,26 @@ module aiFoundry 'modules/ai-foundry.bicep' = [for (location, i) in openAILocati
     location: location.name  // Deploy to the specified region
     tags: tags
     skuName: 'S0'
-    publicNetworkAccess: true
+    enforcePrivateAccess: enforcePrivateAccess
   }
 }]
+
+module aiPrivateEndpoints 'modules/ai-private-endpoints.bicep' = {
+  name: 'deploy-ai-private-endpoints'
+  params: {
+    accounts: [for (location, i) in openAILocations: {
+      name: aiFoundry[i].outputs.accountName
+      id: aiFoundry[i].outputs.accountId
+    }]
+    pepSubnetId: privateEndpointSubnetId
+    privateDnsZoneId: privateDnsZoneId
+    location: rgLocation
+    tags: tags
+  }
+  dependsOn: [
+    aiFoundry
+  ]
+}
 
 // 4. Grant RBAC permissions to managed identity
 @batchSize(1)
@@ -98,6 +161,8 @@ module apim 'modules/apim.bicep' = {
     location: rgLocation
     tags: tags
     sku: apimSku
+    virtualNetworkType: virtualNetworkType
+    apimSubnetResourceId: apimSubnetResourceId
     publisherEmail: apimPublisherEmail
     publisherName: apimPublisherName
     managedIdentityId: managedIdentity.id
@@ -133,6 +198,7 @@ module modelDeployments 'modules/model-deployments.bicep' = [for (location, i) i
   dependsOn: [
     aiFoundry[i]
     aiFoundryRbac[i]
+    aiPrivateEndpoints
     apim
   ]
 }]
