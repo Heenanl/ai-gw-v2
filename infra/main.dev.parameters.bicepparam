@@ -103,3 +103,14 @@ param enforcePrivateAccess = true
 param allowedCognitivePrivateEndpointIps = []
 
 param aiPrivateEndpointSubnetId = ''
+
+param enableApimGatewayPrivateEndpoint = true
+
+// Set to true to disable public network access to APIM (only after validating private endpoint works)
+param disableApimPublicAccess = false
+
+param apimPeSubnetPrefix = '10.50.2.0/28'
+
+param appGwSubnetPrefix = '10.50.3.0/27'
+
+param appGwCertificateName = 'appgw-cert'

@@ -55,6 +55,24 @@ param allowedCognitivePrivateEndpointIps array = []
 @description('Existing private endpoint subnet resource ID (optional override when not creating)')
 param aiPrivateEndpointSubnetId string = ''
 
+@description('Enable APIM gateway private endpoint and Application Gateway for private inbound access')
+param enableApimGatewayPrivateEndpoint bool = false
+
+@description('Disable public network access to APIM (only allow private endpoint access). Only enable after validating private endpoint works.')
+param disableApimPublicAccess bool = false
+
+@description('Enable the developer portal (disabled by default for StandardV2/Premium v2 SKUs)')
+param enableDeveloperPortal bool = false
+
+@description('CIDR for the APIM gateway private endpoint subnet (used when enableApimGatewayPrivateEndpoint=true)')
+param apimPeSubnetPrefix string = '10.50.2.0/28'
+
+@description('CIDR for the Application Gateway subnet (used when enableApimGatewayPrivateEndpoint=true)')
+param appGwSubnetPrefix string = '10.50.3.0/27'
+
+@description('Name of the certificate secret in Key Vault for Application Gateway (default: appgw-cert)')
+param appGwCertificateName string = 'appgw-cert'
+
 // Variables
 var namingPrefix = '${environment}-${suffix}'
 var apimName = 'apim-${namingPrefix}-${uniqueId}'
@@ -80,6 +98,9 @@ module network 'modules/network.bicep' = {
     apimSubnetPrefix: apimSubnetPrefix
     pepSubnetPrefix: pepSubnetPrefix
     allowedCognitivePrivateEndpointIps: allowedCognitivePrivateEndpointIps
+    enableApimGatewayPrivateEndpoint: enableApimGatewayPrivateEndpoint
+    apimPeSubnetPrefix: apimPeSubnetPrefix
+    appGwSubnetPrefix: appGwSubnetPrefix
     tags: tags
   }
 }
@@ -88,7 +109,18 @@ var apimSubnetResourceId = network.outputs.apimSubnetId
 var privateDnsZoneId = network.outputs.privateDnsZoneId
 var privateEndpointSubnetId = empty(aiPrivateEndpointSubnetId) ? network.outputs.pepSubnetId : aiPrivateEndpointSubnetId
 
-// 2. Deploy monitoring infrastructure
+// 2. Deploy Key Vault for Application Gateway certificate
+module keyVault 'modules/key-vault.bicep' = {
+  name: 'deploy-key-vault'
+  params: {
+    location: rgLocation
+    resourceSuffix: uniqueId
+    keyVaultName: 'kv-apim-kpn'
+    tags: tags
+  }
+}
+
+// 3. Deploy monitoring infrastructure
 module logAnalytics 'modules/log-analytics.bicep' = {
   name: 'deploy-log-analytics'
   params: {
@@ -108,7 +140,7 @@ module appInsights 'modules/app-insights.bicep' = {
   }
 }
 
-// 3. Deploy multi-region AI Foundry accounts and projects
+// 4. Deploy multi-region AI Foundry accounts and projects
 @batchSize(1)
 module aiFoundry 'modules/ai-foundry.bicep' = [for (location, i) in openAILocations: {
   name: 'deploy-aifoundry-${location.abbreviation}'
@@ -139,7 +171,7 @@ module aiPrivateEndpoints 'modules/ai-private-endpoints.bicep' = {
   ]
 }
 
-// 4. Grant RBAC permissions to managed identity
+// 5. Grant RBAC permissions to managed identity
 @batchSize(1)
 module aiFoundryRbac 'modules/ai-foundry-rbac.bicep' = [for (location, i) in openAILocations: {
   name: 'rbac-aifoundry-${location.abbreviation}'
@@ -153,7 +185,7 @@ module aiFoundryRbac 'modules/ai-foundry-rbac.bicep' = [for (location, i) in ope
   ]
 }]
 
-// 5. Deploy APIM service
+// 6. Deploy APIM service
 module apim 'modules/apim.bicep' = {
   name: 'deploy-apim'
   params: {
@@ -168,10 +200,30 @@ module apim 'modules/apim.bicep' = {
     managedIdentityId: managedIdentity.id
     appInsightsInstrumentationKey: appInsights.outputs.instrumentationKey
     appInsightsId: appInsights.outputs.appInsightsId
+    publicNetworkAccess: disableApimPublicAccess ? 'Disabled' : 'Enabled'
+    enableDeveloperPortal: enableDeveloperPortal
   }
 }
 
-// 6. Deploy models per region
+// 6a. Deploy APIM gateway private endpoint and Application Gateway (conditional)
+module apimGatewayIngress 'modules/apim-gateway-ingress.bicep' = if (enableApimGatewayPrivateEndpoint) {
+  name: 'deploy-apim-gateway-ingress'
+  params: {
+    location: rgLocation
+    resourceSuffix: uniqueId
+    apimResourceId: apim.outputs.apimId
+    apimGatewayUrl: apim.outputs.apimGatewayUrl
+    apimPeSubnetId: network.outputs.apimPeSubnetId
+    appGwSubnetId: network.outputs.appGwSubnetId
+    privateDnsZoneId: network.outputs.privateDnsZoneApimId
+    keyVaultId: keyVault.outputs.keyVaultId
+    certificateName: appGwCertificateName
+    managedIdentityId: managedIdentity.id
+    tags: tags
+  }
+}
+
+// 7. Deploy models per region
 @batchSize(1)
 module modelDeployments 'modules/model-deployments.bicep' = [for (location, i) in openAILocations: {
   name: 'deploy-models-${location.abbreviation}'
@@ -331,6 +383,10 @@ output deploymentSummary object = {
     name: apim.outputs.apimName
     gatewayUrl: apim.outputs.apimGatewayUrl
     sku: 'StandardV2'
+    privateEndpointEnabled: enableApimGatewayPrivateEndpoint
+  }
+  applicationGateway: {
+    enabled: enableApimGatewayPrivateEndpoint
   }
   monitoring: {
     workspaceId: logAnalytics.outputs.workspaceResourceId

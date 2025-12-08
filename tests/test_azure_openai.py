@@ -1,14 +1,24 @@
 """
-Test script for Azure OpenAI API via APIM Gateway
+Test script for Azure OpenAI API via APIM Gateway (through Application Gateway)
 """
 import os
+import ssl
+import httpx
 from openai import AzureOpenAI
 from azure.identity import DefaultAzureCredential, get_bearer_token_provider
 
 # Configuration
-APIM_ENDPOINT = os.getenv("APIM_ENDPOINT", "https://apim-acc-genaishared-lxpp27stioik4.azure-api.net")
+# Option 1: Test through Application Gateway (public FQDN with WAF protection)
+APIM_ENDPOINT = os.getenv("APIM_ENDPOINT", "https://appgw-yf6mtbaksuydo.westeurope.cloudapp.azure.com")
+
+# Option 2: Test direct to APIM (bypass Application Gateway)
+# APIM_ENDPOINT = os.getenv("APIM_ENDPOINT", "https://apim-dev-genaishared-yf6mtbaksuydo.azure-api.net")
+
 API_VERSION = "2024-02-15-preview"
 DEPLOYMENT_NAME = "gpt-4o-mini-2024-07-18"  # Change to your deployment name
+
+# For testing with self-signed certificates only - DO NOT USE IN PRODUCTION
+VERIFY_SSL = os.getenv("VERIFY_SSL", "false").lower() == "true"
 
 def test_chat_completion():
     """Test chat completion using Azure OpenAI API through APIM with managed identity"""
@@ -20,11 +30,15 @@ def test_chat_completion():
         "https://cognitiveservices.azure.com/.default"
     )
     
+    # Create httpx client with SSL verification disabled for self-signed certs
+    http_client = None if VERIFY_SSL else httpx.Client(verify=False)
+    
     # Initialize Azure OpenAI client with APIM endpoint
     client = AzureOpenAI(
         azure_endpoint=APIM_ENDPOINT,
         api_version=API_VERSION,
-        azure_ad_token_provider=token_provider
+        azure_ad_token_provider=token_provider,
+        http_client=http_client
     )
     
     try:
@@ -63,10 +77,14 @@ def test_streaming_completion():
         "https://cognitiveservices.azure.com/.default"
     )
     
+    # Create httpx client with SSL verification disabled for self-signed certs
+    http_client = None if VERIFY_SSL else httpx.Client(verify=False)
+    
     client = AzureOpenAI(
         azure_endpoint=APIM_ENDPOINT,
         api_version=API_VERSION,
-        azure_ad_token_provider=token_provider
+        azure_ad_token_provider=token_provider,
+        http_client=http_client
     )
     
     try:
@@ -111,6 +129,9 @@ if __name__ == "__main__":
     print("=" * 60)
     print(f"Endpoint: {APIM_ENDPOINT}")
     print(f"Deployment: {DEPLOYMENT_NAME}")
+    print(f"SSL Verification: {VERIFY_SSL}")
+    if not VERIFY_SSL:
+        print("⚠️  WARNING: SSL verification is DISABLED (self-signed cert)")
     print("=" * 60)
     
     # Run tests

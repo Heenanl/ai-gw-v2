@@ -32,6 +32,13 @@ param appInsightsInstrumentationKey string
 @description('Application Insights resource ID')
 param appInsightsId string
 
+@description('Public network access setting. Set to Disabled to allow only private endpoint access.')
+@allowed(['Enabled', 'Disabled'])
+param publicNetworkAccess string = 'Enabled'
+
+@description('Enable the developer portal (disabled by default for v2 SKUs)')
+param enableDeveloperPortal bool = false
+
 var hasVnetIntegration = !empty(apimSubnetResourceId)
 
 // API Management Service
@@ -52,6 +59,8 @@ resource apimService 'Microsoft.ApiManagement/service@2023-09-01-preview' = {
   properties: {
     publisherEmail: publisherEmail
     publisherName: publisherName
+    publicNetworkAccess: publicNetworkAccess
+    developerPortalStatus: enableDeveloperPortal ? 'Enabled' : 'Disabled'
     virtualNetworkConfiguration: hasVnetIntegration ? {
       subnetResourceId: apimSubnetResourceId
     } : null
