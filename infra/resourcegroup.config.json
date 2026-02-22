@@ -1,9 +1,10 @@
 {
     "resourceGroupNames": [
-        "rg-genai-gw-v2"
+        "rg-genai-dev-gw-v2"
     ],
     "tags": {
         "ApplicationName": "GenAIGatewayV2",
-        "BusinessUnit": "AI CoE"
+        "BusinessUnit": "AI CoE",
+        "environment": "acceptance"
     }
 }

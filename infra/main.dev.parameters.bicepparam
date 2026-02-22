@@ -6,7 +6,7 @@ param suffix = 'genaishared'
 
 param rgLocation = 'westeurope'
 
-param apimPublisherEmail = 'noreply@microsoft.com'
+param apimPublisherEmail = 'heenarefai@microsoft.com'
 
 param apimPublisherName = 'AIGatewayTeam'
 
@@ -27,6 +27,16 @@ param openAILocations = [
         priority: 2
         raiPolicyName: 'Microsoft.DefaultV2'
       }
+      {
+        deploymentName: 'gpt-5-mini'
+        skuName: 'DataZoneStandard'
+        skuCapacity: 10
+        name: 'gpt-5-mini'
+        version: '2025-08-07'
+        format: 'OpenAI'
+        priority: 2
+        raiPolicyName: 'Microsoft.DefaultV2'
+      }
     ]
   }
   {
@@ -34,11 +44,11 @@ param openAILocations = [
     abbreviation: 'sc'
     deployments: [
       {
-        deploymentName: 'gpt-4o-mini-2024-07-18-standard'
-        skuName: 'Standard'
+        deploymentName: 'gpt-5-mini'
+        skuName: 'GlobalStandard'
         skuCapacity: 30
-        name: 'gpt-4o-mini'
-        version: '2024-07-18'
+        name: 'gpt-5-mini'
+        version: '2025-08-07'
         format: 'OpenAI'
         priority: 1
         raiPolicyName: 'Microsoft.DefaultV2'

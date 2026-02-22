@@ -189,6 +189,18 @@ module apimConfig 'modules/apim-config.bicep' = {
         value: managedIdentity.properties.clientId
         secret: false
       }
+      {
+        name: 'aad-tenant'
+        displayName: 'aad-tenant'
+        value: '71ab87a2-e73d-4faa-a425-7a824fc24e2d'   
+        secret: false
+      }
+      {
+        name: 'apim-audience'
+        displayName: 'apim-audience'
+        value: 'api://fa574d59-83f3-46ad-9e6a-9dc8ab830ff7'  // App ID URI from step 2
+        secret: false
+      }
     ]
   }
 }
