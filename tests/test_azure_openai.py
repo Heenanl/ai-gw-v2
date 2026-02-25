@@ -11,6 +11,7 @@ API_VERSION = "2024-12-01-preview"
 #DEPLOYMENT_NAME = "gpt-4o-mini-2024-07-18"  # Change to your deployment name
 
 DEPLOYMENT_NAME = "gpt-5-mini"  # Change to your deployment name
+APIM_SUBSCRIPTION_KEY = os.getenv("APIM_SUBSCRIPTION_KEY", "")
 
 def test_chat_completion():
     """Test chat completion using Azure OpenAI API through APIM with managed identity"""
@@ -26,7 +27,8 @@ def test_chat_completion():
     client = AzureOpenAI(
         azure_endpoint=APIM_ENDPOINT,
         api_version=API_VERSION,
-        azure_ad_token_provider=token_provider
+        azure_ad_token_provider=token_provider,
+        default_headers={"Ocp-Apim-Subscription-Key": APIM_SUBSCRIPTION_KEY}
     )
     
     try:
@@ -67,7 +69,8 @@ def test_streaming_completion():
     client = AzureOpenAI(
         azure_endpoint=APIM_ENDPOINT,
         api_version=API_VERSION,
-        azure_ad_token_provider=token_provider
+        azure_ad_token_provider=token_provider,
+        default_headers={"Ocp-Apim-Subscription-Key": APIM_SUBSCRIPTION_KEY}
     )
     
     try:

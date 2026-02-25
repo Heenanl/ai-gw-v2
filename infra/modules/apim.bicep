@@ -56,10 +56,10 @@ resource azureOpenAIApi 'Microsoft.ApiManagement/service/apis@2023-09-01-preview
     description: 'Azure OpenAI native API format'
     path: 'openai'
     protocols: ['https']
-    subscriptionRequired: false
+    subscriptionRequired: true  
     subscriptionKeyParameterNames: {
-      header: 'api-key'
-      query: 'api-key'
+      header: 'Ocp-Apim-Subscription-Key'            // changed from api-key
+      query: 'subscription-key'                      // changed from api-key
     }
     type: 'http'
     format: 'openapi+json'
@@ -77,10 +77,10 @@ resource openAIv1Api 'Microsoft.ApiManagement/service/apis@2023-09-01-preview' =
     description: 'OpenAI v1 compatible API format'
     path: 'v1'
     protocols: ['https']
-    subscriptionRequired: false
+    subscriptionRequired: true
     subscriptionKeyParameterNames: {
-      header: 'api-key'
-      query: 'api-key'
+      header: 'Ocp-Apim-Subscription-Key'
+      query: 'subscription-key'
     }
     type: 'http'
     format: 'openapi+json'
