@@ -270,6 +270,7 @@ param productTerms = ''
 // - Deploying identity must have Contributor role on the Foundry resource group
 // ============================================================================
 
+// TODO: Foundry integration is not yet implemented. Leave this as false until the feature is complete.
 // Set to true to create Foundry APIM connections for each service
 param useTargetFoundry = false
 

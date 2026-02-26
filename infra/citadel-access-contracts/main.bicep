@@ -26,6 +26,7 @@ param productTerms string = ''
 // ============================================================================
 
 @description('Whether to create Azure AI Foundry connection for this use case. If true, foundry parameter must be provided.')
+// TODO: Foundry integration is not yet implemented. Keep this false until the feature is complete.
 param useTargetFoundry bool = false
 
 @description('Azure AI Foundry configuration for creating APIM connections. Required if useTargetFoundry is true.')
@@ -121,6 +122,9 @@ module kvWrites 'modules/kvSecrets.bicep' = [for (s, i) in services: if (useTarg
 // ============================================================================
 // AZURE AI FOUNDRY CONNECTION DEPLOYMENT
 // ============================================================================
+// TODO: Foundry integration is not yet implemented / tested end-to-end.
+//       The block below is scaffolded but should not be enabled until complete.
+//       Keep useTargetFoundry = false.
 // Create Foundry APIM connections per service (only if useTargetFoundry is true)
 // This enables Foundry agents to access AI models through the APIM gateway
 

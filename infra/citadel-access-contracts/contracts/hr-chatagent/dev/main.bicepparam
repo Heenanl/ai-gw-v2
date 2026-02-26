@@ -40,6 +40,7 @@ param services = [
 param productTerms = 'Access Contract created from testing notebook - HR Chat Agent - Key Vault + Foundry (if enabled)'
 
 // Azure AI Foundry Integration
+// TODO: Foundry integration is not yet implemented. Keep this false until the feature is complete.
 param useTargetFoundry = false
 
 param foundry = {

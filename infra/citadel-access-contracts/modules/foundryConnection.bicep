@@ -3,6 +3,9 @@
 Foundry APIM Connection Module
 ===========================================
 
+⚠️  TODO: This feature is not yet implemented / tested end-to-end.
+          Keep useTargetFoundry = false until this is complete.
+
 Creates an APIM connection in an existing Azure AI Foundry project.
 This enables Foundry agents to access AI models through the APIM gateway.
 

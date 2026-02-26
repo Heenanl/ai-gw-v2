@@ -11,6 +11,8 @@ This solution creates a resilient, multi-region Azure AI Gateway that:
 - **Circuit Breaker Pattern**: Opens circuit for 10 seconds on a single 429 error, preventing cascading failures
 - **Dual API Support**: Supports both Azure OpenAI native format (`/openai/deployments/*`) and OpenAI v1 compatible format (`/v1/*`)
 - **Managed Identity Authentication**: Uses Azure managed identity for secure, keyless authentication to AI Foundry
+- **Entra ID JWT Auth** *(branch: `jwtauth`)*: Per-deployment access control via Entra ID app roles
+- **Citadel Access Contracts** *(branch: `usecaseonboard`)*: Declarative IaC onboarding of use cases following the [Foundry Citadel Platform](https://github.com/azure-samples/ai-hub-gateway-solution-accelerator/tree/citadel-v1) AI Access Contract principle
 - **Comprehensive Monitoring**: Application Insights integration with token usage tracking
 
 ### Architecture Diagram
@@ -187,6 +189,8 @@ az login
 .\deploy.ps1 -SubscriptionId "12345678-1234-1234-1234-123456789012"
 ```
 
+> **Next step — onboard a use case**: After the gateway is deployed, follow the [Use-Case Onboarding Guide](docs/usecaseonboard.md) to configure JWT authentication and deploy an AI Access Contract (APIM product + subscription key) for each use case.
+
 ### 4. Verify Deployment
 
 The deployment script outputs key information:
@@ -237,43 +241,42 @@ See [tests/README.md](tests/README.md) for detailed testing documentation.
 ```
 ai-gw-v2/
 ├── deploy.ps1                          # Deployment automation script
-├── plan.md                             # Detailed deployment plan
 ├── README.md                           # This file
+│
+├── docs/
+│   └── usecaseonboard.md               # JWT auth + use-case onboarding guide
 │
 ├── infra/                              # Infrastructure as Code
 │   ├── main.bicep                      # Main orchestration template
-│   ├── main.acc.parameters.bicepparam  # Environment parameters
+│   ├── main.dev.parameters.bicepparam  # Environment parameters
 │   ├── main.json                       # Compiled ARM template
 │   ├── resourcegroup.config.json       # Resource group configuration
-│   │
-│   └── modules/                        # Bicep modules
-│       ├── ai-foundry.bicep           # AI Foundry account & project
-│       ├── ai-foundry-rbac.bicep      # RBAC role assignments
-│       ├── apim.bicep                 # API Management service
-│       ├── apim-backend-pools.bicep   # Backend pool configuration
-│       ├── apim-config.bicep          # Named values configuration
-│       ├── apim-policies.bicep        # Policy attachment
-│       ├── app-insights.bicep         # Application Insights
-│       ├── log-analytics.bicep        # Log Analytics workspace
-│       └── model-deployments.bicep    # Model deployments & backends
-│
-├── apim-policies/                      # APIM policy definitions
-│   ├── aoai-policy.xml                # Azure OpenAI format policy
-│   └── oaiv1-policy.xml               # OpenAI v1 format policy
-│
-├── openapi/                            # OpenAPI specifications
-│   ├── azure-openai-2024-02-01.json   # Azure OpenAI API spec
-│   └── openai-v1.json                 # OpenAI v1 API spec
-│
-├── queries/                            # KQL queries
-│   └── token-metrics.kql              # Token usage metrics
-│
-└── tests/                              # Test scripts
-    ├── README.md                       # Testing documentation
-    ├── requirements.txt                # Test dependencies
-    ├── test_azure_openai.py           # Azure OpenAI format tests
-    ├── test_models_v1.py              # Models endpoint tests
-    └── test_openai_v1.py              # OpenAI v1 format tests
+│   ├── modules/                        # Bicep modules
+│   │   ├── ai-foundry.bicep
+│   │   ├── ai-foundry-rbac.bicep
+│   │   ├── apim.bicep
+│   │   ├── apim-backend-pools.bicep
+│   │   ├── apim-config.bicep
+│   │   ├── apim-policies.bicep
+│   │   ├── app-insights.bicep
+│   │   ├── log-analytics.bicep
+│   │   └── model-deployments.bicep
+│   ├── citadel-access-contracts/       # Use-case onboarding module (branch: usecaseonboard)
+│   │   ├── main.bicep
+│   │   ├── main.bicepparam
+│   │   ├── README.md
+│   │   ├── modules/
+│   │   ├── policies/
+│   │   └── contracts/                  # Per-use-case contract files
+│   │       └── hr-chatagent/dev/       # Example contract
+│   └── specs/
+│       └── JWTAuthentication.md        # JWT auth design notes
+├── apim-policies/
+│   ├── aoai-policy.xml             # Azure OpenAI format policy
+│   └── oaiv1-policy.xml            # OpenAI v1 format policy
+├── openapi/
+├── queries/
+└── tests/
 ```
 
 ## 🔧 Configuration
@@ -338,6 +341,8 @@ customMetrics
 3. **Project-Level Scoping**: RBAC assignments scoped to individual AI Foundry projects
 4. **Network Security**: Public access enabled (configure VNet integration if needed)
 5. **Policy-Based Auth**: Authentication logic centralized in APIM policies
+6. **Entra ID JWT Validation** *(branch: `jwtauth`)*: Every request validated against tenant, audience, and per-deployment app roles
+7. **Subscription Key Isolation** *(branch: `usecaseonboard`)*: Each use case gets a dedicated APIM product and subscription key scoped to its governance policy
 
 ## 🚦 Rate Limiting & Circuit Breaking
 
@@ -385,12 +390,28 @@ az monitor app-insights query --app <app-insights-id> --analytics-query "request
 **Issue**: 429 errors not triggering circuit breaker
 - **Solution**: Check backend pool configuration has correct trip threshold (should be 1)
 
+## 🌿 Branches: `jwtauth` & `usecaseonboard` — Auth & Use-Case Onboarding
+
+These branches extend the base gateway with enterprise-grade access control following the **AI Access Contract** principle from the [Foundry Citadel Platform](https://github.com/azure-samples/ai-hub-gateway-solution-accelerator/tree/citadel-v1):
+
+- **`jwtauth`** — Entra ID JWT validation + per-deployment app-role enforcement
+- **`usecaseonboard`** — Subscription key enforcement + declarative use-case onboarding via Citadel Access Contracts
+
+📄 Full setup guide (JWT auth + contract deployment + testing): [docs/usecaseonboard.md](docs/usecaseonboard.md)
+
+📄 Citadel Access Contracts module reference: [infra/citadel-access-contracts/README.md](infra/citadel-access-contracts/README.md)
+
+---
+
 ## 📚 Additional Resources
 
 - [Azure API Management Documentation](https://docs.microsoft.com/azure/api-management/)
 - [Azure OpenAI Service Documentation](https://docs.microsoft.com/azure/cognitive-services/openai/)
 - [Azure AI Foundry Documentation](https://docs.microsoft.com/azure/ai-services/ai-foundry/)
 - [Backend Circuit Breaker Pattern](https://docs.microsoft.com/azure/api-management/backends)
+- [Foundry Citadel Platform — AI Access Contracts](https://github.com/azure-samples/ai-hub-gateway-solution-accelerator/tree/citadel-v1)
+- [Use-Case Onboarding Guide](docs/usecaseonboard.md)
+- [Citadel Access Contracts README](infra/citadel-access-contracts/README.md)
 
 ## 📝 License
 
