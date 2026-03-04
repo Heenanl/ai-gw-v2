@@ -1,0 +1,57 @@
+<policies>
+    <inbound>
+        <base />
+        <!-- Client POSTs after session ends:
+             { "deployment": "gpt-4o-realtime-preview", "input_tokens": 500, "output_tokens": 1200, "session_id": "rt-session-xyz" }
+             Sourced from the response.done event frame received by the client -->
+
+        <!-- Validate Azure AD JWT - same as all other APIs -->
+        <validate-azure-ad-token tenant-id="{{aad-tenant}}" output-token-variable-name="jwt">
+            <audiences>
+                <audience>{{apim-audience}}</audience>
+            </audiences>
+        </validate-azure-ad-token>
+
+        <set-variable name="realtimeDeployment" value="@{
+            var body = context.Request.Body.As&lt;JObject&gt;(preserveContent: true);
+            return body?[&quot;deployment&quot;]?.ToString() ?? &quot;unknown&quot;;
+        }" />
+
+        <!-- Enforce token quota - same counter key pattern as default-ai-product-policy.xml -->
+        <!-- counter key: LLM-HR-ChatAgent-DEV-SUB-01:gpt-4o-realtime-preview -->
+        <llm-token-limit
+            counter-key="@(context.Subscription.Id + &quot;:&quot; + (string)context.Variables[&quot;realtimeDeployment&quot;])"
+            tokens-per-minute="400"
+            estimate-prompt-tokens="false"
+            tokens-consumed-header-name="x-ratelimit-consumed-tokens"
+            remaining-tokens-header-name="x-ratelimit-remaining-tokens"
+            token-quota="100000"
+            token-quota-period="Monthly"
+            retry-after-header-name="retry-after" />
+
+        <!-- Emit metrics to App Insights - same as aoai-policy.xml -->
+        <azure-openai-emit-token-metric namespace="AzureOpenAI">
+            <dimension name="API ID" value="openai-realtime-ws-api" />
+            <dimension name="Deployment" value="@((string)context.Variables[&quot;realtimeDeployment&quot;])" />
+            <dimension name="Streaming" value="true" />
+            <dimension name="Request ID" value="@(context.RequestId.ToString())" />
+        </azure-openai-emit-token-metric>
+
+        <!-- No backend call needed - return 204 -->
+        <return-response>
+            <set-status code="204" reason="Usage recorded" />
+        </return-response>
+    </inbound>
+    <backend>
+        <!-- return-response in inbound short-circuits before this, but retry is kept for consistency -->
+        <retry condition="@(context.Response.StatusCode == 429)" count="2" interval="1" first-fast-retry="true">
+            <forward-request />
+        </retry>
+    </backend>
+    <outbound>
+        <base />
+    </outbound>
+    <on-error>
+        <base />
+    </on-error>
+</policies>

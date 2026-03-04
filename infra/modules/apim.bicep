@@ -89,6 +89,55 @@ resource openAIv1Api 'Microsoft.ApiManagement/service/apis@2023-09-01-preview' =
   }
 }
 
+// Realtime WebSocket API - defined inline since it's simple and doesn't have a formal 3.0.x spec yet
+resource openAIRealtimeApi 'Microsoft.ApiManagement/service/apis@2023-09-01-preview' = {
+  parent: apimService
+  name: 'openai-realtime-ws-api'
+  properties: {
+    displayName: 'Azure OpenAI Realtime API'
+    description: 'Azure OpenAI Realtime WebSocket API (wss) for audio/speech models'
+    path: 'openai/realtime'
+    protocols: ['wss']
+    subscriptionRequired: true
+    subscriptionKeyParameterNames: {
+      header: 'Ocp-Apim-Subscription-Key'
+      query: 'subscription-key'
+    }
+    type: 'websocket'
+    serviceUrl: 'wss://placeholder.openai.azure.com/openai/realtime'
+  }
+}
+
+// Realtime Usage Reporting API (HTTP - called by client after session ends)
+resource openAIRealtimeUsageApi 'Microsoft.ApiManagement/service/apis@2023-09-01-preview' = {
+  parent: apimService
+  name: 'openai-realtime-usage-api'
+  properties: {
+    displayName: 'Azure OpenAI Realtime Usage Reporting API'
+    description: 'HTTP endpoint for clients to report token usage after a realtime session'
+    path: 'openai/realtime-usage'
+    protocols: ['https']
+    subscriptionRequired: true
+    subscriptionKeyParameterNames: {
+      header: 'Ocp-Apim-Subscription-Key'
+      query: 'subscription-key'
+    }
+    type: 'http'
+    serviceUrl: 'https://placeholder.openai.azure.com'
+  }
+}
+
+// POST /report operation - HTTP APIs require at least one operation to be routable
+resource realtimeUsageReportOperation 'Microsoft.ApiManagement/service/apis/operations@2023-09-01-preview' = {
+  parent: openAIRealtimeUsageApi
+  name: 'report-usage'
+  properties: {
+    displayName: 'Report Usage'
+    method: 'POST'
+    urlTemplate: '/'
+    description: 'Report token usage from a completed realtime session'
+  }
+}
 // Application Insights logger
 resource apimLogger 'Microsoft.ApiManagement/service/loggers@2023-09-01-preview' = {
   parent: apimService
@@ -138,6 +187,40 @@ resource openAIv1Diagnostics 'Microsoft.ApiManagement/service/apis/diagnostics@2
   }
 }
 
+// Diagnostics for Realtime WebSocket API
+resource realtimeDiagnostics 'Microsoft.ApiManagement/service/apis/diagnostics@2023-09-01-preview' = {
+  parent: openAIRealtimeApi
+  name: 'applicationinsights'
+  properties: {
+    loggerId: apimLogger.id
+    alwaysLog: 'allErrors'
+    httpCorrelationProtocol: 'W3C'
+    logClientIp: true
+    sampling: {
+      samplingType: 'fixed'
+      percentage: 100
+    }
+    metrics: true
+  }
+}
+
+// Diagnostics for Realtime Usage Reporting API
+resource realtimeUsageDiagnostics 'Microsoft.ApiManagement/service/apis/diagnostics@2023-09-01-preview' = {
+  parent: openAIRealtimeUsageApi
+  name: 'applicationinsights'
+  properties: {
+    loggerId: apimLogger.id
+    alwaysLog: 'allErrors'
+    httpCorrelationProtocol: 'W3C'
+    logClientIp: true
+    sampling: {
+      samplingType: 'fixed'
+      percentage: 100
+    }
+    metrics: true
+  }
+}
+
 // Outputs
 @description('The resource ID of the APIM service')
 output apimId string = apimService.id
@@ -153,3 +236,6 @@ output azureOpenAIApiId string = azureOpenAIApi.id
 
 @description('The OpenAI v1 API ID')
 output openAIv1ApiId string = openAIv1Api.id
+
+output openAIRealtimeApiId string = openAIRealtimeApi.id
+output openAIRealtimeUsageApiId string = openAIRealtimeUsageApi.id

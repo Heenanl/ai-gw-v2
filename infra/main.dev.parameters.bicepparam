@@ -74,6 +74,16 @@ param openAILocations = [
         priority: 1
         raiPolicyName: 'Microsoft.DefaultV2'
       }
+      {
+        deploymentName: 'gpt-4o-realtime-preview'
+        skuName: 'GlobalStandard'
+        skuCapacity: 1
+        name: 'gpt-4o-realtime-preview'
+        version: '2024-12-17'
+        format: 'OpenAI'
+        priority: 1
+        raiPolicyName: 'Microsoft.DefaultV2'
+      }
     ]
   }
   {

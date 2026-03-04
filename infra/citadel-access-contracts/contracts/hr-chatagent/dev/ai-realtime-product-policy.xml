@@ -1,0 +1,26 @@
+<policies>
+    <inbound>
+        <base />
+        <!-- Extract deployment from query param for WebSocket, or body for usage reporting -->
+        <set-variable name="productDeploymentName" value="@{
+            try {
+                var qsDeployment = context.Request.Url.Query.GetValueOrDefault(&quot;deployment&quot;, (string)null);
+                if (!string.IsNullOrEmpty(qsDeployment)) { return qsDeployment; }
+                var body = context.Request.Body.As&lt;JObject&gt;(preserveContent: true);
+                if (body != null &amp;&amp; body[&quot;deployment&quot;] != null) { return body[&quot;deployment&quot;].ToString(); }
+            } catch {}
+            return &quot;unknown&quot;;
+        }" />
+        <!-- Note: llm-token-limit is enforced at the usage reporting API (openai-realtime-usage-api) -->
+        <!-- not here, because it cannot inspect WebSocket frames -->
+    </inbound>
+    <backend>
+        <base />
+    </backend>
+    <outbound>
+        <base />
+    </outbound>
+    <on-error>
+        <base />
+    </on-error>
+</policies>

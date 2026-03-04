@@ -212,6 +212,8 @@ module apimPolicies 'modules/apim-policies.bicep' = {
     apimServiceName: apim.outputs.apimName
     aoaiPolicyXml: loadTextContent('../apim-policies/aoai-policy.xml')
     oaiv1PolicyXml: loadTextContent('../apim-policies/oaiv1-policy.xml')
+    realtimePolicyXml: loadTextContent('../apim-policies/aoai-realtime-policy.xml')
+    realtimeUsagePolicyXml: loadTextContent('../apim-policies/aoai-realtime-usage-policy.xml')
   }
   dependsOn: [
     aoaiBackendPools

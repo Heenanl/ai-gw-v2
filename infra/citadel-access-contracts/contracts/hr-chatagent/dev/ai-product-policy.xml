@@ -27,15 +27,13 @@
         }" />
         <!-- Capacity management: per-subscription, per-model token quota -->
         <!-- counter key example: LLM-HR-ChatAgent-DEV-SUB-01:gpt-5-mini -->
+        <!-- tokens-consumed-header-name, remaining-tokens-header-name and retry-after-header-name are NOT supported at product scope by APIM -->
         <llm-token-limit
             counter-key="@(context.Subscription.Id + &quot;:&quot; + (string)context.Variables[&quot;productDeploymentName&quot;])"
             tokens-per-minute="400"
             estimate-prompt-tokens="false"
-            tokens-consumed-header-name="consumed-tokens"
-            remaining-tokens-header-name="remaining-tokens"
             token-quota="100000"
-            token-quota-period="Monthly"
-            retry-after-header-name="retry-after" />
+            token-quota-period="Monthly" />
     </inbound>
     <!-- Control if and how the requests are forwarded to services  -->
     <backend>

@@ -1,0 +1,53 @@
+<policies>
+    <inbound>
+        <!-- base is intentionally omitted: API-scope and product-scope policies are silently
+             skipped for WebSocket APIs at runtime. All auth and routing must be self-contained here. -->
+        <!-- Extract deployment from query param: ?deployment=gpt-4o-realtime-preview&api-version=2024-12-17 -->
+        <set-variable name="deploymentName" value="@(
+            context.Request.Url.Query.GetValueOrDefault(&quot;deployment&quot;, &quot;unknown&quot;)
+        )" />
+
+        <!-- Validate Azure AD JWT - same pattern as aoai-policy.xml -->
+        <validate-azure-ad-token tenant-id="{{aad-tenant}}" output-token-variable-name="jwt">
+            <audiences>
+                <audience>{{apim-audience}}</audience>
+            </audiences>
+        </validate-azure-ad-token>
+
+        <!-- Validate deployment is in JWT roles claim - same guard as HTTP APIs -->
+        <choose>
+            <when condition="@(
+                (string)context.Variables[&quot;deploymentName&quot;] != &quot;unknown&quot;
+                &amp;&amp; ((Jwt)context.Variables[&quot;jwt&quot;]).Claims
+                    .GetValueOrDefault(&quot;roles&quot;, &quot;&quot;)
+                    .Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries)
+                    .Any(r => r.Trim().Equals((string)context.Variables[&quot;deploymentName&quot;], StringComparison.OrdinalIgnoreCase))
+            )">
+                <!-- Access granted -->
+            </when>
+            <otherwise>
+                <return-response>
+                    <set-status code="403" reason="Forbidden" />
+                </return-response>
+            </otherwise>
+        </choose>
+
+        <!-- Authenticate to backend via managed identity - same as HTTP APIs -->
+        <authentication-managed-identity resource="https://cognitiveservices.azure.com" client-id="{{managed-identity-client-id}}" />
+
+        <!-- Route to regional backend pool - same naming convention as HTTP APIs -->
+        <set-backend-service backend-id="@{
+            var deployment = (string)context.Variables[&quot;deploymentName&quot;];
+            return deployment == &quot;unknown&quot; ? &quot;aoai-default-backend&quot; : &quot;pool-&quot; + deployment.Replace(&quot;.&quot;, &quot;-dot-&quot;);
+        }" />
+    </inbound>
+    <backend>
+        <base />
+    </backend>
+    <outbound>
+        <base />
+    </outbound>
+    <on-error>
+        <base />
+    </on-error>
+</policies>

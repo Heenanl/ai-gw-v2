@@ -26,6 +26,7 @@ param useCase = {
 
 param apiNameMapping = {
   LLM: ['openai-v1-api', 'azure-openai-api']
+  OAIRT: ['openai-realtime-ws-api', 'openai-realtime-usage-api']  // one subscription key covers both
 }
 
 param services = [
@@ -34,6 +35,12 @@ param services = [
     endpointSecretName: 'HR-LLM-ENDPOINT'
     apiKeySecretName: 'HR-LLM-KEY'
     policyXml: loadTextContent('ai-product-policy.xml')
+  }
+  {
+    code: 'OAIRT'
+    endpointSecretName: 'HR-OAIRT-ENDPOINT'
+    apiKeySecretName: 'HR-OAIRT-KEY'
+    policyXml: loadTextContent('ai-realtime-product-policy.xml')
   }
 ]
 
