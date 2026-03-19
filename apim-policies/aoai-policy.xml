@@ -60,7 +60,7 @@
         </choose>
 
         <!-- Extract caller identity from JWT -->
-        <set-variable name="caller-objectid" value="@(((Jwt)context.Variables[&quot;jwt&quot;]).Subject)" />
+        <set-variable name="caller-objectid" value="@(((Jwt)context.Variables[&quot;jwt&quot;]).Claims.GetValueOrDefault(&quot;oid&quot;, ((Jwt)context.Variables[&quot;jwt&quot;]).Subject))" />
         <set-variable name="upn" value="@(((Jwt)context.Variables[&quot;jwt&quot;]).Claims.GetValueOrDefault(&quot;upn&quot;, &quot;&quot;))" />
 
         <!-- Resolve caller display name: check cache first -->

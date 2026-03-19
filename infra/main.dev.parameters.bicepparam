@@ -74,6 +74,15 @@ param openAILocations = [
         priority: 1
         raiPolicyName: 'Microsoft.DefaultV2'
       }
+      {
+        deploymentName: 'text-embedding-3-small'
+        skuName: 'DataZoneStandard'
+        skuCapacity: 10
+        name: 'text-embedding-3-small'
+        version: '1'
+        format: 'OpenAI'
+        priority: 1
+      }
     ]
   }
   {
@@ -89,6 +98,15 @@ param openAILocations = [
         format: 'OpenAI'
         priority: 1
         raiPolicyName: 'Microsoft.DefaultV2'
+      }
+      {
+        deploymentName: 'text-embedding-3-small'
+        skuName: 'DataZoneStandard'
+        skuCapacity: 10
+        name: 'text-embedding-3-small'
+        version: '1'
+        format: 'OpenAI'
+        priority: 2
       }
     ]
   }
