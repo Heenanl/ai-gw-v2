@@ -28,6 +28,9 @@ param openAILocations array
 @description('Tags to apply to all resources')
 param tags object = {}
 
+@description('Quota configuration JSON map: objectid → { name, tpm, monthlyQuota }. Include a "default" key for unconfigured callers.')
+param quotaConfig string = '{}'
+
 // Variables
 var namingPrefix = '${environment}-${suffix}'
 var apimName = 'apim-${namingPrefix}-${uniqueId}'
@@ -103,6 +106,7 @@ module apim 'modules/apim.bicep' = {
     managedIdentityId: managedIdentity.id
     appInsightsInstrumentationKey: appInsights.outputs.instrumentationKey
     appInsightsId: appInsights.outputs.appInsightsId
+    logAnalyticsWorkspaceId: logAnalytics.outputs.workspaceResourceId
   }
 }
 
@@ -201,6 +205,13 @@ module apimConfig 'modules/apim-config.bicep' = {
         value: 'api://fa574d59-83f3-46ad-9e6a-9dc8ab830ff7'  // App ID URI from step 2
         secret: false
       }
+      {
+        name: 'quota-config'
+        displayName: 'quota-config'
+        value: quotaConfig
+        secret: false
+        tags: ['quota']
+      }
     ]
   }
 }
@@ -216,6 +227,19 @@ module apimPolicies 'modules/apim-policies.bicep' = {
   dependsOn: [
     aoaiBackendPools
     apimConfig
+  ]
+}
+
+// 10. Deploy quota monitoring dashboard
+module quotaDashboard 'modules/dashboard.bicep' = {
+  name: 'deploy-quota-dashboard'
+  params: {
+    location: rgLocation
+    logAnalyticsWorkspaceId: logAnalytics.outputs.workspaceResourceId
+    quotaConfig: quotaConfig
+  }
+  dependsOn: [
+    apimPolicies
   ]
 }
 

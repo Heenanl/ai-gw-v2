@@ -12,6 +12,10 @@ param apimPublisherName = 'AIGatewayTeam'
 
 param apimSku = 'StandardV2'
 
+// Quota configuration: objectid → { name, tpm (tokens-per-minute), monthlyQuota }
+// Add entries for each app/user by their Entra objectid. The "default" key applies to unconfigured callers.
+param quotaConfig = '{"00000000-0000-0000-0000-000000000001": {"name": "Team Alpha App", "tpm": 1000, "monthlyQuota": 5000000}, "default": {"name": "Default", "tpm": 200, "monthlyQuota": 500000}}'
+
 param openAILocations = [
   {
     name: 'westeurope'

@@ -105,6 +105,38 @@
             </when>
         </choose>
 
+        <!-- Quota enforcement: load per-caller config from Named Value -->
+        <set-variable name="quota-mapping" value="{{quota-config}}" />
+        <set-variable name="caller-tpm" value="@{
+            try {
+                var mapping = Newtonsoft.Json.Linq.JObject.Parse((string)context.Variables[&quot;quota-mapping&quot;]);
+                var oid = (string)context.Variables[&quot;caller-objectid&quot;];
+                var entry = mapping[oid] ?? mapping[&quot;default&quot;];
+                if (entry != null) { return entry[&quot;tpm&quot;]?.ToString() ?? &quot;200&quot;; }
+            } catch { }
+            return &quot;200&quot;;
+        }" />
+        <set-variable name="caller-monthly-quota" value="@{
+            try {
+                var mapping = Newtonsoft.Json.Linq.JObject.Parse((string)context.Variables[&quot;quota-mapping&quot;]);
+                var oid = (string)context.Variables[&quot;caller-objectid&quot;];
+                var entry = mapping[oid] ?? mapping[&quot;default&quot;];
+                if (entry != null) { return entry[&quot;monthlyQuota&quot;]?.ToString() ?? &quot;500000&quot;; }
+            } catch { }
+            return &quot;500000&quot;;
+        }" />
+
+        <!-- Per-caller per-model TPM rate limit + monthly token budget (429 on breach) -->
+        <llm-token-limit
+            counter-key="@((string)context.Variables[&quot;caller-objectid&quot;] + &quot;:&quot; + (string)context.Variables[&quot;deploymentName&quot;])"
+            tokens-per-minute="@(int.Parse((string)context.Variables[&quot;caller-tpm&quot;]))"
+            token-quota="@(long.Parse((string)context.Variables[&quot;caller-monthly-quota&quot;]))"
+            token-quota-period="Monthly"
+            estimate-prompt-tokens="true"
+            remaining-tokens-header-name="x-ratelimit-remaining-tokens"
+            remaining-quota-tokens-header-name="x-quota-remaining-tokens"
+            tokens-consumed-header-name="x-tokens-consumed" />
+
         <!-- Authenticate to Azure OpenAI via managed identity -->
         <authentication-managed-identity resource="https://cognitiveservices.azure.com" client-id="{{managed-identity-client-id}}" />
 
@@ -151,6 +183,16 @@
 
     <outbound>
         <base />
+        <!-- Quota visibility headers -->
+        <set-header name="x-ratelimit-limit-tokens" exists-action="override">
+            <value>@((string)context.Variables["caller-tpm"])</value>
+        </set-header>
+        <set-header name="x-quota-limit-tokens" exists-action="override">
+            <value>@((string)context.Variables["caller-monthly-quota"])</value>
+        </set-header>
+        <set-header name="x-caller-name" exists-action="override">
+            <value>@((string)context.Variables["caller-name"])</value>
+        </set-header>
     </outbound>
 
     <on-error>

@@ -26,6 +26,9 @@ param appInsightsInstrumentationKey string
 @description('Application Insights resource ID')
 param appInsightsId string
 
+@description('Log Analytics Workspace resource ID for APIM diagnostic settings')
+param logAnalyticsWorkspaceId string
+
 // API Management Service
 resource apimService 'Microsoft.ApiManagement/service@2023-09-01-preview' = {
   name: apimName
@@ -104,6 +107,27 @@ resource apimLogger 'Microsoft.ApiManagement/service/loggers@2023-09-01-preview'
   }
 }
 
+// Platform diagnostic setting: sends ApiManagementGatewayLogs + ApiManagementGatewayLlmLog to Log Analytics
+resource apimDiagnosticSetting 'Microsoft.Insights/diagnosticSettings@2021-05-01-preview' = {
+  name: 'apim-to-law'
+  scope: apimService
+  properties: {
+    workspaceId: logAnalyticsWorkspaceId
+    logs: [
+      {
+        categoryGroup: 'allLogs'
+        enabled: true
+      }
+    ]
+    metrics: [
+      {
+        category: 'AllMetrics'
+        enabled: true
+      }
+    ]
+  }
+}
+
 // Diagnostics for Azure OpenAI API
 resource azureOpenAIDiagnostics 'Microsoft.ApiManagement/service/apis/diagnostics@2023-09-01-preview' = {
   parent: azureOpenAIApi
@@ -118,6 +142,16 @@ resource azureOpenAIDiagnostics 'Microsoft.ApiManagement/service/apis/diagnostic
       percentage: 100
     }
     metrics: true
+    frontend: {
+      response: {
+        headers: ['x-caller-name', 'x-ratelimit-limit-tokens', 'x-ratelimit-remaining-tokens', 'x-quota-limit-tokens', 'x-quota-remaining-tokens', 'x-tokens-consumed']
+      }
+    }
+    backend: {
+      response: {
+        headers: ['x-ratelimit-remaining-tokens', 'x-ratelimit-remaining-requests']
+      }
+    }
   }
 }
 
@@ -135,6 +169,16 @@ resource openAIv1Diagnostics 'Microsoft.ApiManagement/service/apis/diagnostics@2
       percentage: 100
     }
     metrics: true
+    frontend: {
+      response: {
+        headers: ['x-caller-name', 'x-ratelimit-limit-tokens', 'x-ratelimit-remaining-tokens', 'x-quota-limit-tokens', 'x-quota-remaining-tokens', 'x-tokens-consumed']
+      }
+    }
+    backend: {
+      response: {
+        headers: ['x-ratelimit-remaining-tokens', 'x-ratelimit-remaining-requests']
+      }
+    }
   }
 }
 

@@ -35,3 +35,61 @@ customMetrics
     CompletionTokens,
     TotalTokens
 | order by timestamp desc
+
+// ============================================================
+// Quota-Aware Queries
+// ============================================================
+
+// --- Per-Caller Token Consumption (Current Month) ---
+// Shows total token usage per caller for the current billing month
+ApiManagementGatewayLogs
+| where TimeGenerated >= startofmonth(now())
+| where ResponseHeaders has "x-caller-name"
+| extend CallerName = extract(@'"x-caller-name":"([^"]+)"', 1, tostring(ResponseHeaders))
+| join kind=inner (
+    ApiManagementGatewayLlmLog
+    | where TimeGenerated >= startofmonth(now())
+    | project CorrelationId, PromptTokens, CompletionTokens, TotalTokens, DeploymentName
+) on CorrelationId
+| summarize
+    TotalTokens = sum(TotalTokens),
+    PromptTokens = sum(PromptTokens),
+    CompletionTokens = sum(CompletionTokens),
+    Requests = dcount(CorrelationId)
+    by CallerName
+| order by TotalTokens desc
+
+// --- Per-Caller Per-Model Breakdown (Current Month) ---
+// Token usage broken down by model deployment for each caller
+ApiManagementGatewayLogs
+| where TimeGenerated >= startofmonth(now())
+| where ResponseHeaders has "x-caller-name"
+| extend CallerName = extract(@'"x-caller-name":"([^"]+)"', 1, tostring(ResponseHeaders))
+| join kind=inner (
+    ApiManagementGatewayLlmLog
+    | where TimeGenerated >= startofmonth(now())
+    | where DeploymentName != ""
+    | project CorrelationId, PromptTokens, CompletionTokens, TotalTokens, DeploymentName, ModelName
+) on CorrelationId
+| summarize
+    TotalTokens = sum(TotalTokens),
+    PromptTokens = sum(PromptTokens),
+    CompletionTokens = sum(CompletionTokens),
+    Requests = dcount(CorrelationId)
+    by CallerName, DeploymentName, ModelName
+| order by CallerName asc, TotalTokens desc
+
+// --- Rate Limit Events (429) Timeline ---
+// Shows when callers were throttled by TPM or monthly quota limits
+ApiManagementGatewayLogs
+| where ResponseCode == 429
+| extend CallerName = coalesce(
+    extract(@'"x-caller-name":"([^"]+)"', 1, tostring(ResponseHeaders)),
+    extract(@'"x-caller-name":"([^"]+)"', 1, tostring(BackendRequestHeaders))
+  )
+| summarize
+    ThrottledRequests = count(),
+    FirstThrottle = min(TimeGenerated),
+    LastThrottle = max(TimeGenerated)
+    by CallerName, bin(TimeGenerated, 1h)
+| order by TimeGenerated desc
