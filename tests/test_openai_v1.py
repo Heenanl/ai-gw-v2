@@ -6,7 +6,7 @@ from openai import OpenAI
 from azure.identity import DefaultAzureCredential
 
 # Configuration
-APIM_ENDPOINT = os.getenv("APIM_ENDPOINT", "https://apim-acc-genaishared-lxpp27stioik4.azure-api.net")
+APIM_ENDPOINT = os.getenv("APIM_ENDPOINT", "https://apim-dev-genaishared-gk4ctyapmcrrw.azure-api.net")
 MODEL_NAME = "gpt-4o-mini-2024-07-18"  # Using OpenAI v1 API format
 
 def test_chat_completion():
