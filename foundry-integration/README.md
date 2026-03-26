@@ -138,28 +138,29 @@ param getModelEndpoint = ''
 param deploymentProvider = ''
 ```
 
-### Step 2: Assign App Roles to Agent Identity
+### Step 2: Assign App Roles to Project Managed Identity
 
-The Agent Service uses a separate **agent identity** (auto-created when agents are configured) for outbound calls to APIM. This identity acquires the JWT token.
+The Agent Service uses the **project's managed identity** (system-assigned MI on the project resource) to acquire a JWT token for APIM. The APIM policy checks the `roles` claim in the JWT to authorize access to specific model deployments.
 
 ```powershell
-# 1. Get the agent identity ID
+# 1. Get the project managed identity principal ID
 az rest --method GET `
   --url ".../accounts/<account>/projects/<project>?api-version=2025-04-01-preview" `
-  --query "properties.agentIdentity.agentIdentityId"
+  --query "identity.principalId" -o tsv
 
-# 2. Assign app roles to the agent identity (for each model)
-#    ResourceId = SP object ID of your app registration
-#    AppRoleId  = ID of the app role matching the deployment name
+# 2. Assign app roles to the project MI (for each model deployment)
+#    ServicePrincipalId = project MI principal ID from step 1
+#    ResourceId         = SP object ID of your Entra ID app registration
+#    AppRoleId          = ID of the app role matching the deployment name
 New-AzADServicePrincipalAppRoleAssignment `
-  -ServicePrincipalId <agent-identity-id> `
+  -ServicePrincipalId <project-mi-principal-id> `
   -ResourceId <app-registration-sp-id> `
   -AppRoleId <role-id-for-deployment>
 ```
 
-> **⚠️ JWT role enforcement under investigation:** Testing showed requests succeed even without app roles assigned. The APIM `validate-azure-ad-token` policy accepts the PMI token but the `roles` claim check may not enforce correctly for managed identity tokens. Assign roles as best practice; further investigation needed on the policy's C# expression handling of SPN token claims.
+> **Note:** The project MI identity (not the agent identity) is what appears in the JWT `oid` claim. APIM trace logging confirmed `oid` matches the project MI and `roles` contains the assigned app role values (e.g., `gpt-5-mini,gpt-4o-mini-2024-07-18`).
 >
-> **Token caching:** Entra ID tokens are cached ~60-75 min. Role changes don't take effect until the token expires or the connection is deleted and recreated.
+> **Token caching:** Entra ID tokens are cached ~60-75 min. After assigning or removing roles, delete and recreate the connection to force a fresh token.
 
 ### Step 3: Deploy
 

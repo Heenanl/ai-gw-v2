@@ -71,7 +71,15 @@ This solution creates a resilient, multi-region Azure AI Gateway that:
 ### Authentication & Security
 - Single user-assigned managed identity for APIM
 - Managed identity granted `Cognitive Services OpenAI User` and `Azure AI Developer` roles
+- Entra ID JWT validation with per-deployment app roles in APIM policies
 - All authentication handled in APIM policies (no API keys stored)
+
+### Foundry Agent Integration
+- **Bring Your Own AI Gateway** pattern for Azure AI Foundry Agent Service
+- `ProjectManagedIdentity` (PMI) authentication — agents acquire JWT tokens automatically
+- Static model discovery — no `/deployments` endpoint required on APIM
+- Tested with both public and private (VNet-isolated) Foundry projects
+- See [`foundry-integration/README.md`](foundry-integration/README.md) for full documentation
 
 ### Monitoring & Observability
 - Application Insights for telemetry and diagnostics
@@ -219,7 +227,7 @@ az login
 ### Run Tests
 
 ```powershell
-# Test Azure OpenAI native format
+# Test Azure OpenAI native format (direct APIM call with user JWT)
 cd tests
 python test_azure_openai.py
 
@@ -228,6 +236,11 @@ python test_openai_v1.py
 
 # Test models endpoint
 python test_models_v1.py
+
+# Test Foundry Agent via APIM Gateway (requires deployed connection)
+# Copy .env.template to .env and fill in your Foundry details
+cp .env.template .env
+python test_foundry_agent.py
 ```
 
 See [tests/README.md](tests/README.md) for detailed testing documentation.
@@ -261,6 +274,11 @@ ai-gw-v2/
 │   ├── aoai-policy.xml                # Azure OpenAI format policy
 │   └── oaiv1-policy.xml               # OpenAI v1 format policy
 │
+├── foundry-integration/                # Foundry Agent ↔ APIM connection
+│   ├── main.bicep                     # Connection deployment template
+│   ├── agent.template.bicepparam      # Template params (copy & fill)
+│   └── README.md                      # Foundry integration docs
+│
 ├── openapi/                            # OpenAPI specifications
 │   ├── azure-openai-2024-02-01.json   # Azure OpenAI API spec
 │   └── openai-v1.json                 # OpenAI v1 API spec
@@ -271,7 +289,9 @@ ai-gw-v2/
 └── tests/                              # Test scripts
     ├── README.md                       # Testing documentation
     ├── requirements.txt                # Test dependencies
+    ├── .env.template                  # Foundry test env vars template
     ├── test_azure_openai.py           # Azure OpenAI format tests
+    ├── test_foundry_agent.py          # Foundry Agent via APIM tests
     ├── test_models_v1.py              # Models endpoint tests
     └── test_openai_v1.py              # OpenAI v1 format tests
 ```
@@ -336,8 +356,10 @@ customMetrics
 1. **No API Keys**: All authentication uses Azure managed identity
 2. **RBAC**: Minimal permissions granted (Cognitive Services OpenAI User, Azure AI Developer)
 3. **Project-Level Scoping**: RBAC assignments scoped to individual AI Foundry projects
-4. **Network Security**: Public access enabled (configure VNet integration if needed)
-5. **Policy-Based Auth**: Authentication logic centralized in APIM policies
+4. **JWT Role-Based Access**: Entra ID app roles per deployment name enforce per-model authorization
+5. **Foundry PMI Auth**: Agent Service uses `ProjectManagedIdentity` — project MI acquires JWT with roles claim for APIM
+6. **Network Security**: Public access enabled (configure VNet integration or APIM private endpoint for production)
+7. **Policy-Based Auth**: Authentication logic centralized in APIM policies
 
 ## 🚦 Rate Limiting & Circuit Breaking
 
@@ -391,6 +413,8 @@ az monitor app-insights query --app <app-insights-id> --analytics-query "request
 - [Azure OpenAI Service Documentation](https://docs.microsoft.com/azure/cognitive-services/openai/)
 - [Azure AI Foundry Documentation](https://docs.microsoft.com/azure/ai-services/ai-foundry/)
 - [Backend Circuit Breaker Pattern](https://docs.microsoft.com/azure/api-management/backends)
+- [Connect an AI Gateway to Foundry Agent Service](https://learn.microsoft.com/en-us/azure/foundry/agents/how-to/ai-gateway)
+- [APIM Connection Objects Spec](https://github.com/azure-ai-foundry/foundry-samples/blob/main/infrastructure/infrastructure-setup-bicep/01-connections/apim/APIM-Connection-Objects.md)
 
 ## 📝 License
 
