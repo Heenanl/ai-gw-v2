@@ -1,0 +1,41 @@
+{
+  "aud": "api://fa574d59-83f3-46ad-9e6a-9dc8ab830ff7",
+  "iss": "https://sts.windows.net/71ab87a2-e73d-4faa-a425-7a824fc24e2d/",
+  "iat": 1774514066,
+  "nbf": 1774514066,
+  "exp": 1774519390,
+  "acr": "1",
+  "aio": "AYQAe/8bAAAA+ImDkhddI5cFxljKgWGEGlz/jvlq4ukQX36DaxA51gjJIoIq6e5HooCKGeAhvO3l1eNVnPWbtb2Lc1kHmtY+qsmnmvKHeup08agujd75dSYeN61vu1NsuX63CSQSL5l9UyeXLzybDe81ERlsEd/XBDZmsmkK/Rn88+ovlkycvfA=",
+  "amr": [
+    "pwd",
+    "mfa"
+  ],
+  "appid": "04b07795-8ddb-461a-bbee-02f9e1bf7b46",
+  "appidacr": "0",
+  "deviceid": "8fd85b72-e820-4abb-b3cb-a73133b30eb7",
+  "family_name": "Administrator",
+  "given_name": "System",
+  "ipaddr": "40.68.200.63",
+  "name": "System Administrator",
+  "oid": "bae3a7eb-e191-4420-b5c6-5e5018e1d48f",
+  "pwd_url": "https://go.microsoft.com/fwlink/?linkid=2224198",
+  "rh": "1.AcoAooercT3nqk-kJXqCT8JOLVlNV_rzg61GnmqdyKuDD_fLAS_KAA.",
+  "roles": [
+    "Phi-4",
+    "gpt-5-mini",
+    "gpt-4o-realtime-preview",
+    "text-embedding-3-small",
+    "gpt-4o-mini-2024-07-18",
+    "team-hr-chatbot",
+    "testteam"
+  ],
+  "scp": "access_as_user",
+  "sid": "0030b4da-78fe-a3c1-4f2a-34ed4d93856e",
+  "sub": "vKJ8y09lWjM10AVsSb4IPI3sAId02ne2BAxY_YmVbg4",
+  "tid": "71ab87a2-e73d-4faa-a425-7a824fc24e2d",
+  "unique_name": "admin@MngEnvMCAP512965.onmicrosoft.com",
+  "upn": "admin@MngEnvMCAP512965.onmicrosoft.com",
+  "uti": "GDj9rfyUwk648_Vh66EAAA",
+  "ver": "1.0",
+  "xms_ftd": "uaIGICTA3sxHx1CV4ZS1CK3dBmYvuN5qHFH1pwYliQYBdXN3ZXN0My1kc21z"
+}

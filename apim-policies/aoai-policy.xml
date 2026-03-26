@@ -29,6 +29,19 @@
             </audiences>
         </validate-azure-ad-token>
 
+        <!-- DEBUG: Log JWT claims for investigation -->
+        <trace source="jwt-debug" severity="information">
+            <message>@{
+                var jwt = (Jwt)context.Variables["jwt"];
+                var roles = jwt.Claims.GetValueOrDefault("roles", "NO_ROLES_CLAIM");
+                var oid = jwt.Claims.GetValueOrDefault("oid", "no-oid");
+                var appid = jwt.Claims.GetValueOrDefault("appid", "no-appid");
+                var upn = jwt.Claims.GetValueOrDefault("upn", "no-upn");
+                var idtyp = jwt.Claims.GetValueOrDefault("idtyp", "no-idtyp");
+                return $"roles={roles} | oid={oid} | appid={appid} | upn={upn} | idtyp={idtyp}";
+            }</message>
+        </trace>
+
         <!-- Validate deployment name is in roles claim -->
         <choose>
             <when condition="@(
