@@ -29,6 +29,7 @@
             </audiences>
         </validate-azure-ad-token>
 
+
         <!-- Validate deployment name is in roles claim -->
         <choose>
             <when condition="@(

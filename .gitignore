@@ -1,1 +1,23 @@
 infra/specs/*
+
+# Real parameter files with credentials/resource names (use *.template.* versions)
+foundry-integration/private-agent.bicepparam
+foundry-integration/public-foundry.bicepparam
+
+# Environment files
+tests/.env
+.env
+
+# Temp/debug files
+tests/_*.py
+tests/jwt_claims.json
+tests/token_claims.json
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# Azure
+.azure/
+
