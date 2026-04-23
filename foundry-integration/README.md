@@ -68,7 +68,6 @@ sequenceDiagram
 foundry-integration/
 ├── main.bicep                          # Bicep template — creates an APIM connection in a Foundry project
 ├── agent.template.bicepparam           # Template parameter file — copy and fill in your values
-├── validate-prereqs.sh                 # Pre-flight validation + Bicep what-if dry run
 └── README.md                           # This documentation
 ```
 
@@ -174,37 +173,7 @@ New-AzADServicePrincipalAppRoleAssignment `
 >
 > **Token caching:** Entra ID tokens are cached ~60-75 min. After assigning or removing roles, delete and recreate the connection to force a fresh token.
 
-### Step 3: Validate Prerequisites
-
-Run the pre-flight validation script to check everything before deploying:
-
-```bash
-# Full validation + what-if dry run
-./validate-prereqs.sh \
-  --subscription <foundry-subscription-id> \
-  --resource-group <foundry-resource-group> \
-  --params my-project.bicepparam
-
-# Validation only (skip Bicep what-if)
-./validate-prereqs.sh \
-  --subscription <foundry-subscription-id> \
-  --resource-group <foundry-resource-group> \
-  --params my-project.bicepparam \
-  --skip-whatif
-```
-
-The script checks:
-- No placeholder values left in the parameter file
-- Azure CLI login and subscription access
-- Soft-deleted accounts that would block deployment
-- Foundry account and project existence
-- Project managed identity and agent identity
-- APIM gateway reachability
-- Entra ID app registration and app role assignments
-- APIM named values (`aad-tenant`, `apim-audience`)
-- Bicep what-if simulation (dry run)
-
-### Step 4: Deploy
+### Step 3: Deploy
 
 ```bash
 az account set --subscription <foundry-subscription-id>
@@ -216,14 +185,14 @@ az deployment group create \
   --parameters my-project.bicepparam
 ```
 
-### Step 5: Verify
+### Step 4: Verify
 
 Check the connection in Azure AI Foundry portal:
 1. Navigate to your Foundry project
 2. Go to **Connected resources**
 3. Verify the connection appears with an Active status
 
-### Step 6: Test
+### Step 5: Test
 
 ```bash
 pip install azure-ai-projects>=2.0.0 azure-identity
