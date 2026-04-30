@@ -66,11 +66,9 @@ sequenceDiagram
 
 ```
 foundry-integration/
-├── main.bicep                          # Main deployment template (supports ApiKey, AAD, PMI)
-├── private-agent.bicepparam            # Parameters for private Foundry (aiservices6u2x/project2)
-├── public-foundry.bicepparam           # Parameters for public Foundry (foundry-public-01/proj-default)
-├── README.md                           # This documentation
-└── ai-gateway/                         # Full Foundry + APIM deployment template (azd)
+├── main.bicep                          # Bicep template — creates an APIM connection in a Foundry project
+├── agent.template.bicepparam           # Template parameter file — copy and fill in your values
+└── README.md                           # This documentation
 ```
 
 ---
@@ -92,47 +90,50 @@ foundry-integration/
 
 ### Step 1: Configure Parameters
 
-Copy an existing parameter file and edit:
+Copy the template parameter file and fill in your values:
 
 ```bash
-cp public-foundry.bicepparam my-project.bicepparam
+cp agent.template.bicepparam my-project.bicepparam
 ```
 
-Edit `my-project.bicepparam`:
+Edit `my-project.bicepparam` — replace all `<PLACEHOLDER>` values:
 
 ```bicep
 using 'main.bicep'
 
-param aiFoundryAccountName = 'my-foundry-account'
-param aiFoundryProjectName = 'my-project'
+// Foundry account and project
+param aiFoundryAccountName = '<YOUR-AI-FOUNDRY-ACCOUNT-NAME>'
+param aiFoundryProjectName = '<YOUR-AI-FOUNDRY-PROJECT-NAME>'
 param connectionName = 'citadel-hub-connection'
-param apimGatewayUrl = 'https://my-apim.azure-api.net'
+
+// APIM Gateway
+param apimGatewayUrl = '<YOUR-APIM-GATEWAY-URL>'   // e.g., https://my-apim.azure-api.net
 param apiPath = 'openai'
 
 // PMI Auth — no subscription key needed
 param authType = 'ProjectManagedIdentity'
-param audience = 'api://your-app-registration-client-id'
+param audience = 'api://<YOUR-APIM-APP-REGISTRATION-CLIENT-ID>'
 param isSharedToAll = true
 
 // APIM Config
 param deploymentInPath = 'true'
 param inferenceAPIVersion = '2024-12-01-preview'  // Must match APIM api-version
 
-// Static models (required if APIM lacks /deployments endpoint)
+// Static models — list each model your agent needs access to
 param staticModels = [
   {
-    name: 'gpt-5-mini'
+    name: '<DEPLOYMENT-NAME>'           // e.g., 'gpt-5-mini'
     properties: {
       model: {
-        name: 'gpt-5-mini'
-        version: '2025-08-07'
+        name: '<MODEL-NAME>'            // e.g., 'gpt-5-mini'
+        version: '<MODEL-VERSION>'      // e.g., '2025-08-07'
         format: 'OpenAI'
       }
     }
   }
 ]
 
-// Disable dynamic discovery (override non-empty defaults)
+// Disable dynamic discovery (required when using static models)
 param listModelsEndpoint = ''
 param getModelEndpoint = ''
 param deploymentProvider = ''
@@ -144,16 +145,26 @@ The Agent Service uses the **project's managed identity** (system-assigned MI on
 
 ```powershell
 # 1. Get the project managed identity principal ID
-az rest --method GET `
-  --url ".../accounts/<account>/projects/<project>?api-version=2025-04-01-preview" `
+$projectMI = az rest --method GET `
+  --url "https://management.azure.com/subscriptions/<sub-id>/resourceGroups/<rg>/providers/Microsoft.CognitiveServices/accounts/<account>/projects/<project>?api-version=2025-04-01-preview" `
   --query "identity.principalId" -o tsv
 
-# 2. Assign app roles to the project MI (for each model deployment)
-#    ServicePrincipalId = project MI principal ID from step 1
+# 2. Also get the agent identity (if using private agent setup)
+$agentId = az rest --method GET `
+  --url "https://management.azure.com/subscriptions/<sub-id>/resourceGroups/<rg>/providers/Microsoft.CognitiveServices/accounts/<account>/projects/<project>?api-version=2025-04-01-preview" `
+  --query "properties.agentIdentity.agentIdentityId" -o tsv
+
+# 3. Assign app roles to BOTH identities (for each model deployment)
+#    ServicePrincipalId = project MI or agent identity from above
 #    ResourceId         = SP object ID of your Entra ID app registration
 #    AppRoleId          = ID of the app role matching the deployment name
 New-AzADServicePrincipalAppRoleAssignment `
-  -ServicePrincipalId <project-mi-principal-id> `
+  -ServicePrincipalId $projectMI `
+  -ResourceId <app-registration-sp-id> `
+  -AppRoleId <role-id-for-deployment>
+
+New-AzADServicePrincipalAppRoleAssignment `
+  -ServicePrincipalId $agentId `
   -ResourceId <app-registration-sp-id> `
   -AppRoleId <role-id-for-deployment>
 ```
@@ -183,13 +194,80 @@ Check the connection in Azure AI Foundry portal:
 
 ### Step 5: Test
 
+#### Option A: Test via Responses API (connection-routed, no agent needed)
+
+The simplest way to validate the Foundry -> APIM connection is using the Responses API
+with `connection_name/model_name` as the model. This routes through the connection
+without deploying an agent:
+
+```bash
+pip install azure-ai-projects>=2.0.0 azure-identity openai
+
+set FOUNDRY_ACCOUNT=<your-foundry-account>
+set FOUNDRY_PROJECT=<your-project>
+set FOUNDRY_CONNECTION_NAME=citadel-hub-connection
+set MODEL_NAME=gpt-5-mini
+python tests/test_foundry_connection.py
+```
+
+> **Important:** Connection-routed inference (`connection_name/model_name`) only works via
+> the **Responses API** (`client.responses.create()`). The Chat Completions API does not
+> support connection routing through the Foundry project endpoint.
+
+#### Option B: Test via Foundry Agent (full end-to-end)
+
 ```bash
 pip install azure-ai-projects>=2.0.0 azure-identity
 
-export FOUNDRY_ACCOUNT=my-foundry-account
-export FOUNDRY_PROJECT=my-project
+set FOUNDRY_ACCOUNT=<your-foundry-account>
+set FOUNDRY_PROJECT=<your-project>
 python tests/test_foundry_agent.py
 ```
+
+---
+
+## 🔥 Troubleshooting
+
+### Deployment hangs for 2 hours then fails
+
+A soft-deleted CognitiveServices account with the same name is blocking recreation. Purge it first:
+
+```bash
+# List soft-deleted accounts
+az rest --method GET \
+  --url "https://management.azure.com/subscriptions/<sub-id>/providers/Microsoft.CognitiveServices/deletedAccounts?api-version=2025-04-01-preview"
+
+# Purge the old account (adjust location)
+az rest --method DELETE \
+  --url "https://management.azure.com/subscriptions/<sub-id>/providers/Microsoft.CognitiveServices/locations/<region>/resourceGroups/<rg>/deletedAccounts/<account-name>?api-version=2025-04-01-preview"
+```
+
+### ParentResourceNotFound when listing capability hosts
+
+The Foundry account or project no longer exists. Verify:
+
+```bash
+# Check account exists
+az rest --method GET \
+  --url "https://management.azure.com/subscriptions/<sub-id>/resourceGroups/<rg>/providers/Microsoft.CognitiveServices/accounts/<account>?api-version=2025-04-01-preview"
+
+# List projects under the account
+az rest --method GET \
+  --url "https://management.azure.com/subscriptions/<sub-id>/resourceGroups/<rg>/providers/Microsoft.CognitiveServices/accounts/<account>/projects?api-version=2025-04-01-preview"
+```
+
+If the account was deleted, purge the soft-deleted account (see above) and redeploy.
+
+### Correct deletion order
+
+When tearing down a Foundry agent setup, delete resources in this order to avoid orphaned resources:
+
+1. **Capability hosts** (agent compute)
+2. **Connections** (APIM connection)
+3. **Project**
+4. **Foundry account**
+
+Deleting the account first cascades to children but can leave orphaned networking resources (subnet locks, NICs) that block redeployment.
 
 ---
 
@@ -319,5 +397,4 @@ See `tests/test_foundry_agent.py` for a complete working example.
 | **Auth Types** | `ProjectManagedIdentity` and `ApiKey` work; `AAD` causes runtime issues |
 | **isSharedToAll** | ARM API ignores this property (always returns `false`), but PMI connections work regardless |
 | **Private Networking** | Private Foundry requires public access on the account or APIM private endpoint in the agent VNet |
-| **agent_reference** | The `extra_body` property name is `agent_reference` (not `agent` — deprecated) |
-
+| **agent_reference** | The `extra_body` property name is `agent_reference` (not `agent` — deprecated) || **Soft Delete** | Deleting a CognitiveServices account soft-deletes it; recreating with the same name hangs until purged |

@@ -23,15 +23,19 @@ Usage:
 """
 import os
 import time
+from pathlib import Path
+from dotenv import load_dotenv
 from azure.ai.projects import AIProjectClient
 from azure.ai.projects.models import PromptAgentDefinition
 from azure.identity import DefaultAzureCredential
 
+load_dotenv(Path(__file__).parent / ".env")
+
 # Configuration
-FOUNDRY_ACCOUNT = os.getenv("FOUNDRY_ACCOUNT", "aiservices6u2x")
-FOUNDRY_PROJECT = os.getenv("FOUNDRY_PROJECT", "project2")
+FOUNDRY_ACCOUNT = os.getenv("FOUNDRY_ACCOUNT", "aiservicesktdp")
+FOUNDRY_PROJECT = os.getenv("FOUNDRY_PROJECT", "projectktdp")
 CONNECTION_NAME = os.getenv("FOUNDRY_CONNECTION_NAME", "citadel-hub-connection")
-MODEL_NAME = os.getenv("FOUNDRY_MODEL_NAME", "gpt-5-mini")
+MODEL_NAME = os.getenv("MODEL_NAME", "gpt-5-mini")
 
 # Derived
 ENDPOINT = f"https://{FOUNDRY_ACCOUNT}.services.ai.azure.com/api/projects/{FOUNDRY_PROJECT}"
