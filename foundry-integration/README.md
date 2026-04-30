@@ -194,11 +194,33 @@ Check the connection in Azure AI Foundry portal:
 
 ### Step 5: Test
 
+#### Option A: Test via Responses API (connection-routed, no agent needed)
+
+The simplest way to validate the Foundry -> APIM connection is using the Responses API
+with `connection_name/model_name` as the model. This routes through the connection
+without deploying an agent:
+
+```bash
+pip install azure-ai-projects>=2.0.0 azure-identity openai
+
+set FOUNDRY_ACCOUNT=<your-foundry-account>
+set FOUNDRY_PROJECT=<your-project>
+set FOUNDRY_CONNECTION_NAME=citadel-hub-connection
+set MODEL_NAME=gpt-5-mini
+python tests/test_foundry_connection.py
+```
+
+> **Important:** Connection-routed inference (`connection_name/model_name`) only works via
+> the **Responses API** (`client.responses.create()`). The Chat Completions API does not
+> support connection routing through the Foundry project endpoint.
+
+#### Option B: Test via Foundry Agent (full end-to-end)
+
 ```bash
 pip install azure-ai-projects>=2.0.0 azure-identity
 
-export FOUNDRY_ACCOUNT=<your-foundry-account>
-export FOUNDRY_PROJECT=<your-project>
+set FOUNDRY_ACCOUNT=<your-foundry-account>
+set FOUNDRY_PROJECT=<your-project>
 python tests/test_foundry_agent.py
 ```
 

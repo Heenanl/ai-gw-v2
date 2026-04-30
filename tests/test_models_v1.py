@@ -2,21 +2,23 @@
 Test script for OpenAI v1 API via APIM Gateway
 """
 import os
+from pathlib import Path
+from dotenv import load_dotenv
 from openai import OpenAI
 from azure.identity import DefaultAzureCredential, get_bearer_token_provider
 
+load_dotenv(Path(__file__).parent / ".env")
+
 # Configuration
 APIM_ENDPOINT = os.getenv("APIM_ENDPOINT", "https://apim-dev-genaishared-gk4ctyapmcrrw.azure-api.net")
-MODEL_NAME = "Phi-4"  # Must match deployment name and app role exactly
-
-AUDIENCE = "api://fa574d59-83f3-46ad-9e6a-9dc8ab830ff7/.default"
+MODEL_NAME = os.getenv("MODEL_NAME", "gpt-5-mini")
+APIM_AUDIENCE = os.getenv("APIM_AUDIENCE", "api://fa574d59-83f3-46ad-9e6a-9dc8ab830ff7")
 
 def get_client():
     """Create OpenAI client with Entra ID token for APIM gateway"""
     credential = DefaultAzureCredential()
-    # get_bearer_token_provider returns a callable - call it to get the token string
-    token_provider = get_bearer_token_provider(credential, AUDIENCE)
-    token = token_provider()  # invoke to get the actual token string
+    token_provider = get_bearer_token_provider(credential, f"{APIM_AUDIENCE}/.default")
+    token = token_provider()
 
     return OpenAI(
         base_url=f"{APIM_ENDPOINT}/v1",

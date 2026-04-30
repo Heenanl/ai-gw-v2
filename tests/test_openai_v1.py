@@ -2,19 +2,24 @@
 Test script for OpenAI v1 API via APIM Gateway
 """
 import os
+from pathlib import Path
+from dotenv import load_dotenv
 from openai import OpenAI
 from azure.identity import DefaultAzureCredential
 
+load_dotenv(Path(__file__).parent / ".env")
+
 # Configuration
 APIM_ENDPOINT = os.getenv("APIM_ENDPOINT", "https://apim-dev-genaishared-gk4ctyapmcrrw.azure-api.net")
-MODEL_NAME = "gpt-4o-mini-2024-07-18"  # Using OpenAI v1 API format
+MODEL_NAME = os.getenv("MODEL_NAME", "gpt-5-mini")
+APIM_AUDIENCE = os.getenv("APIM_AUDIENCE", "api://fa574d59-83f3-46ad-9e6a-9dc8ab830ff7")
 
 def test_chat_completion():
     """Test chat completion using OpenAI v1 API format through APIM with managed identity"""
     
     # Get Azure AD token
     credential = DefaultAzureCredential()
-    token = credential.get_token("https://cognitiveservices.azure.com/.default")
+    token = credential.get_token(f"{APIM_AUDIENCE}/.default")
     
     # Initialize OpenAI client with APIM endpoint and Azure AD token
     client = OpenAI(
@@ -30,8 +35,7 @@ def test_chat_completion():
                 {"role": "system", "content": "You are a helpful assistant."},
                 {"role": "user", "content": "What is Azure API Management?"}
             ],
-            max_tokens=150,
-            temperature=0.7
+            max_completion_tokens=150,
         )
         
         # Print the response
@@ -53,7 +57,7 @@ def test_streaming_completion():
     """Test streaming chat completion using OpenAI v1 API format through APIM"""
     
     credential = DefaultAzureCredential()
-    token = credential.get_token("https://cognitiveservices.azure.com/.default")
+    token = credential.get_token(f"{APIM_AUDIENCE}/.default")
     
     client = OpenAI(
         base_url=f"{APIM_ENDPOINT}/v1",
@@ -69,7 +73,7 @@ def test_streaming_completion():
             messages=[
                 {"role": "user", "content": "What is Azure API Management?"}
             ],
-            max_tokens=1000,
+            max_completion_tokens=1000,
             stream=True
         )
         

@@ -2,15 +2,18 @@
 Test script for Azure OpenAI API via APIM Gateway
 """
 import os
+from pathlib import Path
+from dotenv import load_dotenv
 from openai import AzureOpenAI
 from azure.identity import DefaultAzureCredential, get_bearer_token_provider
 
+load_dotenv(Path(__file__).parent / ".env")
+
 # Configuration
 APIM_ENDPOINT = os.getenv("APIM_ENDPOINT", "https://apim-dev-genaishared-gk4ctyapmcrrw.azure-api.net")
-API_VERSION = "2024-12-01-preview"
-#DEPLOYMENT_NAME = "gpt-4o-mini-2024-07-18"  # Change to your deployment name
-
-DEPLOYMENT_NAME = "gpt-5-mini"  # Change to your deployment name
+API_VERSION = os.getenv("API_VERSION", "2024-12-01-preview")
+DEPLOYMENT_NAME = os.getenv("DEPLOYMENT_NAME", "gpt-5-mini")
+APIM_AUDIENCE = os.getenv("APIM_AUDIENCE", "api://fa574d59-83f3-46ad-9e6a-9dc8ab830ff7")
 
 def test_chat_completion():
     """Test chat completion using Azure OpenAI API through APIM with managed identity"""
@@ -19,7 +22,7 @@ def test_chat_completion():
     credential = DefaultAzureCredential()
     token_provider = get_bearer_token_provider(
         credential,
-        "api://fa574d59-83f3-46ad-9e6a-9dc8ab830ff7/.default"
+        f"{APIM_AUDIENCE}/.default"
     )
     
     # Initialize Azure OpenAI client with APIM endpoint
@@ -61,7 +64,7 @@ def test_streaming_completion():
     credential = DefaultAzureCredential()
     token_provider = get_bearer_token_provider(
         credential,
-        "api://fa574d59-83f3-46ad-9e6a-9dc8ab830ff7/.default"
+        f"{APIM_AUDIENCE}/.default"
     )
     
     client = AzureOpenAI(
