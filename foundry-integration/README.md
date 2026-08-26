@@ -290,6 +290,23 @@ Deleting the account first cascades to children but can leave orphaned networkin
 
 > ⚠️ **Important**: The template has non-empty defaults for `listModelsEndpoint` (`/deployments`), `getModelEndpoint` (`/deployments/{deployment-id}`), and `deploymentProvider` (`AzureOpenAI`). When using static models, you **must** explicitly set these to empty strings to prevent dynamic discovery from being enabled.
 
+The OpenAI v1 API exposes role-filtered discovery at `GET /v1/models` and
+`GET /v1/models/{model}`. Configure a Foundry connection for that API with:
+
+```bicep
+param apiPath = 'v1'
+param deploymentInPath = 'false'
+param listModelsEndpoint = '/models'
+param getModelEndpoint = '/models/{deployment-id}'
+param deploymentProvider = 'OpenAI'
+param staticModels = []
+```
+
+The model catalog is generated from the same deduplicated deployment names used
+to create APIM backend pools. Redeploy the main infrastructure after adding or
+removing a deployment. At request time, APIM returns only models represented in
+the caller's `roles` claim.
+
 ### Critical Parameters
 
 | Parameter | Required Value | Why |

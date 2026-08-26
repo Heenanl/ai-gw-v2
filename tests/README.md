@@ -29,6 +29,11 @@ python test_azure_openai.py
 python test_openai_v1.py
 ```
 
+### OpenAI v1 model discovery and inference
+```powershell
+python test_models_v1.py
+```
+
 ## Configuration
 
 ### test_azure_openai.py
@@ -41,6 +46,12 @@ python test_openai_v1.py
 - **Authentication**: Azure DefaultAzureCredential (managed identity/Azure CLI)
 - **Endpoint**: APIM gateway URL + /v1 (OpenAI-compatible format)
 - **Model**: gpt-4o-mini (simplified model name)
+
+### test_models_v1.py
+- **Authentication**: Azure DefaultAzureCredential (managed identity/Azure CLI)
+- **Endpoint**: APIM gateway URL + /v1 (OpenAI-compatible format)
+- **Coverage**: Model list, model retrieval, chat completion, and streaming completion
+- **Authorization**: The selected model must be present in the token's `roles` claim
 
 ## Tests Included
 

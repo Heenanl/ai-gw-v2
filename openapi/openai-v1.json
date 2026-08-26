@@ -11,6 +11,68 @@
     }
   ],
   "paths": {
+    "/models": {
+      "get": {
+        "operationId": "listModels",
+        "summary": "Lists the models available to the caller",
+        "responses": {
+          "200": {
+            "description": "A list of available models",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["object", "data"],
+                  "properties": {
+                    "object": {
+                      "type": "string",
+                      "enum": ["list"]
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Model"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/models/{model}": {
+      "get": {
+        "operationId": "retrieveModel",
+        "summary": "Retrieves a model available to the caller",
+        "parameters": [
+          {
+            "name": "model",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Model details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Model"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Model not found"
+          }
+        }
+      }
+    },
     "/chat/completions": {
       "post": {
         "operationId": "createChatCompletion",
@@ -98,6 +160,25 @@
   },
   "components": {
     "schemas": {
+      "Model": {
+        "type": "object",
+        "required": ["id", "object", "created", "owned_by"],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "object": {
+            "type": "string",
+            "enum": ["model"]
+          },
+          "created": {
+            "type": "integer"
+          },
+          "owned_by": {
+            "type": "string"
+          }
+        }
+      },
       "CreateChatCompletionRequest": {
         "type": "object",
         "required": ["model", "messages"],

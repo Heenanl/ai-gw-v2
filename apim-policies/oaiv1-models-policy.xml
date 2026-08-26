@@ -1,0 +1,107 @@
+<policies>
+    <inbound>
+        <validate-azure-ad-token tenant-id="{{aad-tenant}}" output-token-variable-name="jwt">
+            <audiences>
+                <audience>{{apim-audience}}</audience>
+            </audiences>
+        </validate-azure-ad-token>
+
+        <return-response>
+            <set-status code="@{
+                var requestedModel = context.Request.MatchedParameters.GetValueOrDefault(&quot;model&quot;, &quot;&quot;);
+                if (string.IsNullOrEmpty(requestedModel))
+                {
+                    return 200;
+                }
+
+                var configuredModels = JArray.Parse(@&quot;__MODEL_NAMES__&quot;);
+                var roles = ((Jwt)context.Variables[&quot;jwt&quot;]).Claims
+                    .GetValueOrDefault(&quot;roles&quot;, &quot;&quot;)
+                    .Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries);
+                return configuredModels.Values&lt;string&gt;().Any(model =>
+                    model.Equals(requestedModel, StringComparison.OrdinalIgnoreCase)
+                    &amp;&amp; roles.Any(role => role.Trim().Equals(model, StringComparison.OrdinalIgnoreCase)))
+                    ? 200
+                    : 404;
+            }" reason="@{
+                var requestedModel = context.Request.MatchedParameters.GetValueOrDefault(&quot;model&quot;, &quot;&quot;);
+                if (string.IsNullOrEmpty(requestedModel))
+                {
+                    return &quot;OK&quot;;
+                }
+
+                var configuredModels = JArray.Parse(@&quot;__MODEL_NAMES__&quot;);
+                var roles = ((Jwt)context.Variables[&quot;jwt&quot;]).Claims
+                    .GetValueOrDefault(&quot;roles&quot;, &quot;&quot;)
+                    .Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries);
+                return configuredModels.Values&lt;string&gt;().Any(model =>
+                    model.Equals(requestedModel, StringComparison.OrdinalIgnoreCase)
+                    &amp;&amp; roles.Any(role => role.Trim().Equals(model, StringComparison.OrdinalIgnoreCase)))
+                    ? &quot;OK&quot;
+                    : &quot;Not Found&quot;;
+            }" />
+            <set-header name="Content-Type" exists-action="override">
+                <value>application/json</value>
+            </set-header>
+            <set-body>@{
+                var configuredModels = JArray.Parse(@&quot;__MODEL_NAMES__&quot;);
+                var roles = ((Jwt)context.Variables[&quot;jwt&quot;]).Claims
+                    .GetValueOrDefault(&quot;roles&quot;, &quot;&quot;)
+                    .Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries);
+                var authorizedModels = configuredModels.Values&lt;string&gt;()
+                    .Where(model => roles.Any(role => role.Trim().Equals(model, StringComparison.OrdinalIgnoreCase)))
+                    .ToArray();
+                var requestedModel = context.Request.MatchedParameters.GetValueOrDefault(&quot;model&quot;, &quot;&quot;);
+
+                if (!string.IsNullOrEmpty(requestedModel))
+                {
+                    var model = authorizedModels.FirstOrDefault(name =>
+                        name.Equals(requestedModel, StringComparison.OrdinalIgnoreCase));
+                    if (model == null)
+                    {
+                        return new JObject(
+                            new JProperty(&quot;error&quot;, new JObject(
+                                new JProperty(&quot;message&quot;, string.Format(&quot;The model '{0}' does not exist or you do not have access to it.&quot;, requestedModel)),
+                                new JProperty(&quot;type&quot;, &quot;invalid_request_error&quot;),
+                                new JProperty(&quot;param&quot;, &quot;model&quot;),
+                                new JProperty(&quot;code&quot;, &quot;model_not_found&quot;)
+                            ))
+                        ).ToString();
+                    }
+
+                    return new JObject(
+                        new JProperty(&quot;id&quot;, model),
+                        new JProperty(&quot;object&quot;, &quot;model&quot;),
+                        new JProperty(&quot;created&quot;, 0),
+                        new JProperty(&quot;owned_by&quot;, &quot;azure&quot;)
+                    ).ToString();
+                }
+
+                var data = new JArray();
+                foreach (var model in authorizedModels)
+                {
+                    data.Add(new JObject(
+                        new JProperty(&quot;id&quot;, model),
+                        new JProperty(&quot;object&quot;, &quot;model&quot;),
+                        new JProperty(&quot;created&quot;, 0),
+                        new JProperty(&quot;owned_by&quot;, &quot;azure&quot;)
+                    ));
+                }
+
+                return new JObject(
+                    new JProperty(&quot;object&quot;, &quot;list&quot;),
+                    new JProperty(&quot;data&quot;, data)
+                ).ToString();
+            }</set-body>
+        </return-response>
+    </inbound>
+    <backend>
+        <base />
+    </backend>
+    <outbound>
+        <base />
+    </outbound>
+    <on-error>
+        <base />
+    </on-error>
+</policies>

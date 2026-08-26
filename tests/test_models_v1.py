@@ -25,6 +25,41 @@ def get_client():
         api_key=token  # pass token string as api_key
     )
 
+def test_model_discovery():
+    """Test role-filtered OpenAI v1 model discovery through APIM."""
+    client = get_client()
+
+    try:
+        models = client.models.list()
+        model_ids = [model.id for model in models.data]
+
+        print(f"✓ Model discovery successful ({len(model_ids)} models)")
+        for model_id in model_ids:
+            print(f"  - {model_id}")
+
+        if MODEL_NAME not in model_ids:
+            print(f"✗ Configured model '{MODEL_NAME}' is not available to this identity")
+            return False
+
+        return True
+
+    except Exception as e:
+        print(f"✗ Error during model discovery: {e}")
+        return False
+
+def test_model_retrieval():
+    """Test retrieval of an authorized model through APIM."""
+    client = get_client()
+
+    try:
+        model = client.models.retrieve(MODEL_NAME)
+        print(f"✓ Model retrieval successful: {model.id}")
+        return model.id == MODEL_NAME
+
+    except Exception as e:
+        print(f"✗ Error during model retrieval: {e}")
+        return False
+
 def test_chat_completion():
     """Test chat completion using OpenAI v1 API format through APIM"""
     client = get_client()
@@ -102,10 +137,16 @@ if __name__ == "__main__":
 
     test_results = []
 
-    print("\n[1/2] Testing chat completion...")
+    print("\n[1/4] Testing model discovery...")
+    test_results.append(test_model_discovery())
+
+    print("\n[2/4] Testing model retrieval...")
+    test_results.append(test_model_retrieval())
+
+    print("\n[3/4] Testing chat completion...")
     test_results.append(test_chat_completion())
 
-    print("\n[2/2] Testing streaming completion...")
+    print("\n[4/4] Testing streaming completion...")
     test_results.append(test_streaming_completion())
 
     print("\n" + "=" * 60)
