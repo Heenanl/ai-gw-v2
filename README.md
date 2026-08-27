@@ -317,6 +317,55 @@ Both `aoai-policy.xml` and `oaiv1-policy.xml` implement:
 4. **Token Metrics**: Emits usage metrics to Application Insights
 5. **Retry Logic**: 2 retries with 1-second intervals on 429 errors
 
+### Databricks OpenAI-Compatible API
+
+The optional `infra/databricks.bicep` entry point adds a dedicated API at
+`/databricks/v1` without redeploying the rest of the gateway. It imports the
+OpenAI v1 schema, uses the provider-neutral `llm-emit-token-metric` policy, and
+requests a final usage event for streaming responses.
+
+For the `adb-swc-01` test workspace, deploy with a short-lived Entra token:
+
+```powershell
+$databricksToken = az account get-access-token `
+  --resource 2ff814a6-3304-4ab8-85cb-cd0e6f879c1d `
+  --query accessToken --output tsv
+
+az deployment group create `
+  --resource-group rg-genai-dev-gw-v2 `
+  --template-file infra/databricks.bicep `
+  --parameters `
+    apimServiceName=apim-dev-genaishared-gk4ctyapmcrrw `
+    databricksEndpoint=https://adb-7405607996608859.19.azuredatabricks.net/serving-endpoints `
+    databricksApiToken=$databricksToken `
+    requiredRole=testteam
+```
+
+Run `python tests/test_databricks.py` to test non-streaming and streaming usage.
+The short-lived user token is suitable only for validation. Production should
+use an authorized Databricks service principal or APIM managed identity. Exact
+streaming usage requires Databricks to return a final SSE event containing
+`usage`; APIM cannot reconstruct exact usage when that event is absent.
+
+The Databricks API diagnostic enables both Application Insights custom metrics
+and native LLM logs without recording request or response message bodies. The
+custom `DatabricksLLM` token metrics have been verified for streaming and
+non-streaming calls. Native `GatewayLlmLogs` are also emitted for both modes.
+With the current APIM diagnostic setting they are stored in `AzureDiagnostics`
+under `Category == "GatewayLlmLogs"`, rather than in the resource-specific
+`ApiManagementGatewayLlmLog` table:
+
+```kusto
+AzureDiagnostics
+| where TimeGenerated > ago(4h)
+| where Category == "GatewayLlmLogs"
+| where deploymentName_s == "databricks-gpt-oss-20b"
+| project TimeGenerated, CorrelationId, isStreamCompletion_b,
+  promptTokens_d, completionTokens_d, totalTokens_d,
+  modelName_s, deploymentName_s
+| order by TimeGenerated desc
+```
+
 ### Named Values
 
 APIM named values (configured in `modules/apim-config.bicep`):
@@ -353,7 +402,7 @@ customMetrics
 
 ## 🔒 Security Considerations
 
-1. **No API Keys**: All authentication uses Azure managed identity
+1. **Backend Authentication**: Foundry uses managed identity; the Databricks proof of concept uses a secret named value containing a short-lived token
 2. **RBAC**: Minimal permissions granted (Cognitive Services OpenAI User, Azure AI Developer)
 3. **Project-Level Scoping**: RBAC assignments scoped to individual AI Foundry projects
 4. **JWT Role-Based Access**: Entra ID app roles per deployment name enforce per-model authorization

@@ -60,7 +60,7 @@ resource oaiv1ApiPolicy 'Microsoft.ApiManagement/service/apis/policies@2023-05-0
   }
 }
 
-var oaiv1ModelsPolicy = replace(oaiv1ModelsPolicyXml, '__MODEL_NAMES__', string(modelNames))
+var oaiv1ModelsPolicy = replace(oaiv1ModelsPolicyXml, '__MODEL_NAMES_BASE64__', base64(string(modelNames)))
 
 resource listModelsPolicy 'Microsoft.ApiManagement/service/apis/operations/policies@2023-05-01-preview' = {
   parent: listModelsOperation

@@ -14,7 +14,7 @@
                     return 200;
                 }
 
-                var configuredModels = JArray.Parse(@&quot;__MODEL_NAMES__&quot;);
+                var configuredModels = JArray.Parse(Encoding.UTF8.GetString(Convert.FromBase64String(&quot;__MODEL_NAMES_BASE64__&quot;)));
                 var roles = ((Jwt)context.Variables[&quot;jwt&quot;]).Claims
                     .GetValueOrDefault(&quot;roles&quot;, &quot;&quot;)
                     .Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries);
@@ -30,7 +30,7 @@
                     return &quot;OK&quot;;
                 }
 
-                var configuredModels = JArray.Parse(@&quot;__MODEL_NAMES__&quot;);
+                var configuredModels = JArray.Parse(Encoding.UTF8.GetString(Convert.FromBase64String(&quot;__MODEL_NAMES_BASE64__&quot;)));
                 var roles = ((Jwt)context.Variables[&quot;jwt&quot;]).Claims
                     .GetValueOrDefault(&quot;roles&quot;, &quot;&quot;)
                     .Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries);
@@ -44,7 +44,7 @@
                 <value>application/json</value>
             </set-header>
             <set-body>@{
-                var configuredModels = JArray.Parse(@&quot;__MODEL_NAMES__&quot;);
+                var configuredModels = JArray.Parse(Encoding.UTF8.GetString(Convert.FromBase64String(&quot;__MODEL_NAMES_BASE64__&quot;)));
                 var roles = ((Jwt)context.Variables[&quot;jwt&quot;]).Claims
                     .GetValueOrDefault(&quot;roles&quot;, &quot;&quot;)
                     .Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries);
