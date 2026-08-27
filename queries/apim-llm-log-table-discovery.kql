@@ -1,0 +1,10 @@
+// Run from the Log Analytics workspace to identify the active APIM LLM log table mode.
+// AzureDiagnostics indicates legacy table mode; ApiManagementGatewayLlmLog indicates resource-specific mode.
+
+union withsource=TableName isfuzzy=true
+    AzureDiagnostics,
+    ApiManagementGatewayLlmLog
+| where TimeGenerated > ago(4h)
+| where Category == "GatewayLlmLogs" or TableName == "ApiManagementGatewayLlmLog"
+| summarize Records = count(), LastSeen = max(TimeGenerated) by TableName
+| order by Records desc

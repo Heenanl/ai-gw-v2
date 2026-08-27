@@ -317,6 +317,68 @@ Both `aoai-policy.xml` and `oaiv1-policy.xml` implement:
 4. **Token Metrics**: Emits usage metrics to Application Insights
 5. **Retry Logic**: 2 retries with 1-second intervals on 429 errors
 
+### Databricks OpenAI-Compatible API
+
+The optional `infra/databricks.bicep` entry point adds a dedicated API at
+`/databricks/v1` without redeploying the rest of the gateway. It imports the
+OpenAI v1 schema, uses the provider-neutral `llm-emit-token-metric` policy, and
+requests a final usage event for streaming responses.
+
+For the `adb-swc-01` test workspace, deploy with a short-lived Entra token:
+
+```powershell
+$databricksToken = az account get-access-token `
+  --resource 2ff814a6-3304-4ab8-85cb-cd0e6f879c1d `
+  --query accessToken --output tsv
+
+az deployment group create `
+  --resource-group rg-genai-dev-gw-v2 `
+  --template-file infra/databricks.bicep `
+  --parameters `
+    apimServiceName=apim-dev-genaishared-gk4ctyapmcrrw `
+    databricksEndpoint=https://adb-7405607996608859.19.azuredatabricks.net/serving-endpoints `
+    databricksApiToken=$databricksToken `
+    requiredRole=testteam
+```
+
+Run `python tests/test_databricks.py` to test non-streaming and streaming usage.
+The short-lived user token is suitable only for validation. Production should
+use an authorized Databricks service principal or APIM managed identity. Exact
+streaming usage requires Databricks to return a final SSE event containing
+`usage`; APIM cannot reconstruct exact usage when that event is absent.
+
+The Databricks API diagnostic enables both Application Insights custom metrics
+and native LLM logs without recording request or response message bodies. The
+custom `DatabricksLLM` token metrics have been verified for streaming and
+non-streaming calls. Native `GatewayLlmLogs` are also emitted for both modes.
+With the current APIM diagnostic setting they are stored in `AzureDiagnostics`
+under `Category == "GatewayLlmLogs"`, rather than in the resource-specific
+`ApiManagementGatewayLlmLog` table.
+
+Run the native log queries from the Log Analytics workspace connected to the
+APIM service diagnostic setting, not from the Application Insights
+resource-scoped Logs view. For the validated development environment, this is
+`law-dev-genaishared`. The Application Insights view
+`appi-dev-genaishared | Logs` does not expose `AzureDiagnostics` unless it is
+referenced with a cross-workspace query.
+
+Use the provided queries:
+
+- [`queries/databricks-gateway-llm-logs.kql`](queries/databricks-gateway-llm-logs.kql): native per-request Databricks usage in `GatewayLlmLogs`
+- [`queries/databricks-token-metrics.kql`](queries/databricks-token-metrics.kql): optional custom metrics emitted by `llm-emit-token-metric`
+- [`queries/apim-llm-log-table-discovery.kql`](queries/apim-llm-log-table-discovery.kql): determines whether APIM logs use legacy or resource-specific tables
+
+To query native logs from another resource-scoped Logs view, prefix the table
+with the Log Analytics workspace ID:
+
+```kusto
+workspace("<workspace-id>").AzureDiagnostics
+| where TimeGenerated > ago(4h)
+| where Category == "GatewayLlmLogs"
+| where deploymentName_s == "databricks-gpt-oss-20b"
+| order by TimeGenerated desc
+```
+
 ### Named Values
 
 APIM named values (configured in `modules/apim-config.bicep`):
@@ -337,7 +399,9 @@ Token usage metrics are automatically captured:
 
 ### Query Usage Metrics
 
-Use the provided KQL query (`queries/token-metrics.kql`) in Log Analytics:
+Use [`queries/token-metrics.kql`](queries/token-metrics.kql) for the existing
+Azure OpenAI metrics. For Databricks, use the feature-specific queries listed
+above.
 
 ```kql
 customMetrics
@@ -353,7 +417,7 @@ customMetrics
 
 ## 🔒 Security Considerations
 
-1. **No API Keys**: All authentication uses Azure managed identity
+1. **Backend Authentication**: Foundry uses managed identity; the Databricks proof of concept uses a secret named value containing a short-lived token
 2. **RBAC**: Minimal permissions granted (Cognitive Services OpenAI User, Azure AI Developer)
 3. **Project-Level Scoping**: RBAC assignments scoped to individual AI Foundry projects
 4. **JWT Role-Based Access**: Entra ID app roles per deployment name enforce per-model authorization
