@@ -1,0 +1,21 @@
+// Run from the Log Analytics workspace connected to APIM diagnostics.
+// Shows native APIM LLM usage records for the Databricks deployment.
+
+AzureDiagnostics
+| where TimeGenerated > ago(4h)
+| where ResourceProvider == "MICROSOFT.APIMANAGEMENT"
+| where Category == "GatewayLlmLogs"
+| where deploymentName_s == "databricks-gpt-oss-20b"
+| project
+    TimeGenerated,
+    CorrelationId,
+    deploymentName_s,
+    modelName_s,
+    isStreamCompletion_b,
+    promptTokens_d,
+    completionTokens_d,
+    totalTokens_d,
+    requestId_s,
+    serviceName_s,
+    Region_s
+| order by TimeGenerated desc

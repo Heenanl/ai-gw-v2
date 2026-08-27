@@ -353,16 +353,29 @@ custom `DatabricksLLM` token metrics have been verified for streaming and
 non-streaming calls. Native `GatewayLlmLogs` are also emitted for both modes.
 With the current APIM diagnostic setting they are stored in `AzureDiagnostics`
 under `Category == "GatewayLlmLogs"`, rather than in the resource-specific
-`ApiManagementGatewayLlmLog` table:
+`ApiManagementGatewayLlmLog` table.
+
+Run the native log queries from the Log Analytics workspace connected to the
+APIM service diagnostic setting, not from the Application Insights
+resource-scoped Logs view. For the validated development environment, this is
+`law-dev-genaishared`. The Application Insights view
+`appi-dev-genaishared | Logs` does not expose `AzureDiagnostics` unless it is
+referenced with a cross-workspace query.
+
+Use the provided queries:
+
+- [`queries/databricks-gateway-llm-logs.kql`](queries/databricks-gateway-llm-logs.kql): native per-request Databricks usage in `GatewayLlmLogs`
+- [`queries/databricks-token-metrics.kql`](queries/databricks-token-metrics.kql): optional custom metrics emitted by `llm-emit-token-metric`
+- [`queries/apim-llm-log-table-discovery.kql`](queries/apim-llm-log-table-discovery.kql): determines whether APIM logs use legacy or resource-specific tables
+
+To query native logs from another resource-scoped Logs view, prefix the table
+with the Log Analytics workspace ID:
 
 ```kusto
-AzureDiagnostics
+workspace("<workspace-id>").AzureDiagnostics
 | where TimeGenerated > ago(4h)
 | where Category == "GatewayLlmLogs"
 | where deploymentName_s == "databricks-gpt-oss-20b"
-| project TimeGenerated, CorrelationId, isStreamCompletion_b,
-  promptTokens_d, completionTokens_d, totalTokens_d,
-  modelName_s, deploymentName_s
 | order by TimeGenerated desc
 ```
 
@@ -386,7 +399,9 @@ Token usage metrics are automatically captured:
 
 ### Query Usage Metrics
 
-Use the provided KQL query (`queries/token-metrics.kql`) in Log Analytics:
+Use [`queries/token-metrics.kql`](queries/token-metrics.kql) for the existing
+Azure OpenAI metrics. For Databricks, use the feature-specific queries listed
+above.
 
 ```kql
 customMetrics

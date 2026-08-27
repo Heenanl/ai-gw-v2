@@ -1,0 +1,19 @@
+// Run from the workspace-based Application Insights Logs view or its Log Analytics workspace.
+// Summarizes the optional llm-emit-token-metric measurements per APIM request.
+
+AppMetrics
+| where TimeGenerated > ago(4h)
+| where Name in ("Prompt Tokens", "Completion Tokens", "Total Tokens")
+| extend
+    APIId = tostring(Properties["API ID"]),
+    BackendId = tostring(Properties["Backend ID"]),
+    Model = tostring(Properties["Model"]),
+    Streaming = tostring(Properties["Streaming"]),
+    RequestId = tostring(Properties["Request ID"])
+| where APIId == "databricks-openai-api"
+| summarize
+    PromptTokens = sumif(Sum, Name == "Prompt Tokens"),
+    CompletionTokens = sumif(Sum, Name == "Completion Tokens"),
+    TotalTokens = sumif(Sum, Name == "Total Tokens")
+    by RequestId, APIId, BackendId, Model, Streaming, bin(TimeGenerated, 1m)
+| order by TimeGenerated desc
