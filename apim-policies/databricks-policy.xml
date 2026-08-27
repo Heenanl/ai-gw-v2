@@ -6,7 +6,14 @@
             </audiences>
         </validate-azure-ad-token>
 
-        <set-variable name="modelName" value="@(context.Request.Body.As&lt;JObject&gt;(preserveContent: true)?[&quot;model&quot;]?.ToString() ?? &quot;unknown&quot;)" />
+        <set-variable name="modelName" value="@{
+            try
+            {
+                var body = context.Request.Body.As&lt;JObject&gt;(preserveContent: true);
+                return body?[&quot;model&quot;]?.ToString() ?? &quot;unknown&quot;;
+            }
+            catch { return &quot;unknown&quot;; }
+        }" />
 
         <choose>
             <when condition="@{
